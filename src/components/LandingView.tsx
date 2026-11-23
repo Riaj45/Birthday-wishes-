@@ -134,7 +134,7 @@ export const LandingView: React.FC<LandingViewProps> = ({ catalog, onStartBuildi
               </h2>
             </div>
 
-            <div className="flex items-center gap-1 p-1 bg-stone-100 rounded-lg self-start">
+            <div className="flex items-center gap-1 p-1 bg-stone-100 rounded-lg self-start max-w-full overflow-x-auto">
               {categories.map((cat) => (
                 <button
                   key={cat}

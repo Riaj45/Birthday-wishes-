@@ -1,11 +1,16 @@
 import { onAuthStateChanged, type User } from 'firebase/auth';
 import {
+  Activity,
   BarChart3,
+  Clock,
+  Download,
   ExternalLink,
+  Eye,
   Flag,
   FolderKanban,
   HardDrive,
   Image as ImageIcon,
+  KeyRound,
   LayoutTemplate,
   Lock,
   LogOut,
@@ -19,20 +24,27 @@ import {
   Sparkles,
   Trash2,
   Upload,
+  X,
 } from 'lucide-react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { auth, signInAdminWithGoogle, signOutFirebaseAdmin } from '../firebase';
 import {
+  adminBulkProjects,
+  adminChangePassword,
   adminCreateAnimation,
   adminCreateBackground,
   adminCreateMusic,
   adminCreateTemplate,
   adminDeleteAnimation,
   adminDeleteBackground,
+  adminDeleteMedia,
   adminDeleteMusic,
   adminDeleteProject,
   adminDeleteTemplate,
+  adminExtendProject,
+  adminResetRateLimits,
   adminResolveReport,
+  adminRevokeProjectToken,
   adminRunStorageCleanup,
   adminSetProjectStatus,
   adminUpdateAnimation,
@@ -41,7 +53,10 @@ import {
   adminUploadAudio,
   adminUploadBackgroundImage,
   fetchAdminAnimations,
+  fetchAdminAuditLogs,
   fetchAdminBackgrounds,
+  fetchAdminExportBackup,
+  fetchAdminMedia,
   fetchAdminMusic,
   fetchAdminOverview,
   fetchAdminProjects,
@@ -53,6 +68,7 @@ import {
   logoutAdmin,
 } from '../services/api';
 import type {
+  AdminAuditLog,
   AdminOverview,
   AdminSessionInfo,
   AnimationEffectType,
@@ -63,6 +79,7 @@ import type {
   BirthdayTemplate,
   ContentReport,
   FontStyle,
+  MediaFileEntry,
   MusicTrack,
   SiteSettings,
 } from '../types/birthday';
@@ -82,6 +99,7 @@ type AdminSection =
   | 'backgrounds'
   | 'reports'
   | 'storage'
+  | 'activity'
   | 'settings';
 
 function formatBytes(bytes: number): string {
@@ -116,12 +134,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onCa
   const [backgrounds, setBackgrounds] = useState<BackgroundAsset[]>([]);
   const [reports, setReports] = useState<ContentReport[]>([]);
   const [settingsForm, setSettingsForm] = useState<SiteSettings | null>(null);
+  const [mediaFiles, setMediaFiles] = useState<MediaFileEntry[]>([]);
+  const [auditLogs, setAuditLogs] = useState<AdminAuditLog[]>([]);
 
-  // Filters
+  // Filters & Selections
   const [projectSearch, setProjectSearch] = useState('');
   const [projectStatusFilter, setProjectStatusFilter] = useState<'all' | 'published' | 'draft' | 'unpublished'>('all');
+  const [selectedProjectIds, setSelectedProjectIds] = useState<string[]>([]);
+  const [inspectedProject, setInspectedProject] = useState<BirthdayProject | null>(null);
   const [reportFilter, setReportFilter] = useState<'all' | 'open' | 'resolved' | 'dismissed'>('open');
+  const [auditSearch, setAuditSearch] = useState('');
   const [playingTrackId, setPlayingTrackId] = useState<string | null>(null);
+
+  // Security Password Change State
+  const [currentPwd, setCurrentPwd] = useState('');
+  const [newPwd, setNewPwd] = useState('');
 
   // Template Create/Edit Form
   const [editingTplId, setEditingTplId] = useState<string | null>(null);
@@ -167,7 +194,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onCa
   const loadAllAdminData = useCallback(async () => {
     setLoadingData(true);
     try {
-      const [ov, pr, tp, an, mu, bg, rp, st] = await Promise.all([
+      const [ov, pr, tp, an, mu, bg, rp, st, md, al] = await Promise.all([
         fetchAdminOverview(),
         fetchAdminProjects(),
         fetchAdminTemplates(),
@@ -176,6 +203,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onCa
         fetchAdminBackgrounds(),
         fetchAdminReports(),
         fetchAdminSettings(),
+        fetchAdminMedia(),
+        fetchAdminAuditLogs(),
       ]);
       setOverview(ov);
       setProjects(pr.projects);
@@ -185,6 +214,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onCa
       setBackgrounds(bg.backgrounds);
       setReports(rp.reports);
       setSettingsForm(st.settings);
+      setMediaFiles(md.files);
+      setAuditLogs(al.auditLogs);
+      setSelectedProjectIds((prev) => prev.filter((id) => pr.projects.some((p) => p.id === id)));
+      setInspectedProject((prev) => (prev ? pr.projects.find((p) => p.id === prev.id) || null : null));
     } catch (err) {
       setFeedback({ type: 'err', text: err instanceof Error ? err.message : 'Failed to load admin data.' });
     } finally {
@@ -259,6 +292,175 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onCa
     if (reportFilter === 'all') return reports;
     return reports.filter((r) => r.status === reportFilter);
   }, [reports, reportFilter]);
+
+  const filteredAuditLogs = useMemo(() => {
+    const q = auditSearch.trim().toLowerCase();
+    if (!q) return auditLogs;
+    return auditLogs.filter(
+      (log) =>
+        log.action.toLowerCase().includes(q) ||
+        log.target.toLowerCase().includes(q) ||
+        log.details.toLowerCase().includes(q) ||
+        log.actor.toLowerCase().includes(q)
+    );
+  }, [auditLogs, auditSearch]);
+
+  const downloadBlob = (content: string, filename: string, mime: string) => {
+    const blob = new Blob([content], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExportProjectsCsv = () => {
+    const header = ['ID', 'Recipient', 'Sender', 'Status', 'Visits', 'Photos', 'Wishes', 'Template', 'CreatedAt', 'ExpiresAt'];
+    const escapeCsv = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const rows = projects.map((p) =>
+      [
+        p.id,
+        p.recipientName,
+        p.senderName,
+        p.status,
+        p.visitCount,
+        p.photos.length,
+        p.wishes.length,
+        p.templateId,
+        p.createdAt,
+        p.expiresAt,
+      ]
+        .map(escapeCsv)
+        .join(',')
+    );
+    downloadBlob([header.join(','), ...rows].join('\n'), `birthday-magic-pages-${Date.now()}.csv`, 'text/csv;charset=utf-8');
+    setFeedback({ type: 'ok', text: `Exported ${projects.length} birthday pages to CSV.` });
+  };
+
+  const handleExportAuditCsv = () => {
+    const header = ['Timestamp', 'Actor', 'Action', 'Target', 'Details'];
+    const escapeCsv = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const rows = auditLogs.map((l) => [l.createdAt, l.actor, l.action, l.target, l.details].map(escapeCsv).join(','));
+    downloadBlob([header.join(','), ...rows].join('\n'), `birthday-magic-audit-${Date.now()}.csv`, 'text/csv;charset=utf-8');
+    setFeedback({ type: 'ok', text: `Exported ${auditLogs.length} audit log records to CSV.` });
+  };
+
+  const handleDownloadFullBackup = async () => {
+    setBusyAction(true);
+    try {
+      const backup = await fetchAdminExportBackup();
+      downloadBlob(
+        JSON.stringify(backup, null, 2),
+        `birthday-magic-backup-${new Date().toISOString().slice(0, 10)}.json`,
+        'application/json'
+      );
+      setFeedback({ type: 'ok', text: 'Full platform configuration & project backup downloaded.' });
+    } catch (err) {
+      setFeedback({ type: 'err', text: err instanceof Error ? err.message : 'Backup export failed.' });
+    } finally {
+      setBusyAction(false);
+    }
+  };
+
+  const handleBulkAction = async (action: 'publish' | 'unpublish' | 'delete') => {
+    if (selectedProjectIds.length === 0) return;
+    setBusyAction(true);
+    try {
+      const res = await adminBulkProjects(selectedProjectIds, action);
+      setSelectedProjectIds([]);
+      await loadAllAdminData();
+      setFeedback({
+        type: 'ok',
+        text:
+          action === 'delete'
+            ? `Bulk deleted ${res.deleted} birthday pages.`
+            : `Bulk updated ${res.updated} birthday pages (${action}).`,
+      });
+    } catch (err) {
+      setFeedback({ type: 'err', text: err instanceof Error ? err.message : 'Bulk action failed.' });
+    } finally {
+      setBusyAction(false);
+    }
+  };
+
+  const handleExtendProject = async (id: string, days: number) => {
+    setBusyAction(true);
+    try {
+      const res = await adminExtendProject(id, days);
+      setInspectedProject(res.project);
+      await loadAllAdminData();
+      setFeedback({ type: 'ok', text: `Extended project ${id} expiration by +${days} days.` });
+    } catch (err) {
+      setFeedback({ type: 'err', text: err instanceof Error ? err.message : 'Failed to extend expiration.' });
+    } finally {
+      setBusyAction(false);
+    }
+  };
+
+  const handleRevokeToken = async (id: string) => {
+    setBusyAction(true);
+    try {
+      await adminRevokeProjectToken(id);
+      await loadAllAdminData();
+      setFeedback({
+        type: 'ok',
+        text: `Revoked active owner edit token for ${id}. Existing edit links can no longer modify this page.`,
+      });
+    } catch (err) {
+      setFeedback({ type: 'err', text: err instanceof Error ? err.message : 'Failed to revoke edit token.' });
+    } finally {
+      setBusyAction(false);
+    }
+  };
+
+  const handleDeleteMediaFile = async (file: MediaFileEntry) => {
+    setBusyAction(true);
+    try {
+      const res = await adminDeleteMedia(file.url);
+      await loadAllAdminData();
+      setFeedback({
+        type: 'ok',
+        text: `Deleted ${file.filename} (${formatBytes(res.reclaimedBytes)} reclaimed).`,
+      });
+    } catch (err) {
+      setFeedback({ type: 'err', text: err instanceof Error ? err.message : 'Could not delete media file.' });
+    } finally {
+      setBusyAction(false);
+    }
+  };
+
+  const handleResetRateLimits = async () => {
+    setBusyAction(true);
+    try {
+      const res = await adminResetRateLimits();
+      await loadAllAdminData();
+      setFeedback({ type: 'ok', text: `Cleared ${res.clearedBuckets} active rate-limit buckets.` });
+    } catch (err) {
+      setFeedback({ type: 'err', text: err instanceof Error ? err.message : 'Failed to clear rate limits.' });
+    } finally {
+      setBusyAction(false);
+    }
+  };
+
+  const handleChangeAdminPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentPwd || !newPwd) return;
+    setBusyAction(true);
+    try {
+      await adminChangePassword(currentPwd, newPwd);
+      setCurrentPwd('');
+      setNewPwd('');
+      await loadAllAdminData();
+      setFeedback({ type: 'ok', text: 'Administrator password updated securely.' });
+    } catch (err) {
+      setFeedback({ type: 'err', text: err instanceof Error ? err.message : 'Could not update password.' });
+    } finally {
+      setBusyAction(false);
+    }
+  };
 
   // ── CRUD Handlers ──────────────────────────────────────────────────────────
   const handleToggleProjectStatus = async (project: BirthdayProject) => {
@@ -575,7 +777,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onCa
       icon: <Flag className="w-4 h-4" />,
       count: reports.filter((r) => r.status === 'open').length,
     },
-    { id: 'storage', label: 'Storage & Cleanup', icon: <HardDrive className="w-4 h-4" /> },
+    { id: 'storage', label: 'Storage & Cleanup', icon: <HardDrive className="w-4 h-4" />, count: mediaFiles.length },
+    { id: 'activity', label: 'Activity & Security', icon: <Activity className="w-4 h-4" />, count: auditLogs.length },
     { id: 'settings', label: 'Settings & Branding', icon: <Settings className="w-4 h-4" /> },
   ];
 
@@ -875,7 +1078,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onCa
                 <div>
                   <h1 className="font-display text-2xl font-semibold text-zinc-900">Birthday Pages</h1>
                   <p className="text-xs text-zinc-500 mt-1">
-                    Inspect, unpublish, republish, or permanently delete any user-created birthday page.
+                    Inspect, bulk-moderate, extend expiration, revoke edit tokens, or export user-created birthday pages.
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -884,7 +1087,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onCa
                     value={projectSearch}
                     onChange={(e) => setProjectSearch(e.target.value)}
                     placeholder="Search recipient, sender, or ID..."
-                    className="rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-xs text-zinc-900 w-56"
+                    className="rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-xs text-zinc-900 w-52"
                   />
                   <div className="flex items-center gap-1 p-1 bg-stone-200/70 rounded-lg">
                     {(['all', 'published', 'draft', 'unpublished'] as const).map((st) => (
@@ -900,88 +1103,180 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onCa
                       </button>
                     ))}
                   </div>
+                  <button
+                    type="button"
+                    onClick={handleExportProjectsCsv}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-stone-300 bg-white text-xs font-medium text-zinc-800 hover:bg-stone-100 whitespace-nowrap shrink-0 cursor-pointer"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    Export CSV
+                  </button>
                 </div>
               </div>
+
+              {/* Bulk Selection Toolbar */}
+              {selectedProjectIds.length > 0 && (
+                <div className="bg-zinc-900 text-white rounded-xl px-5 py-3 flex flex-wrap items-center justify-between gap-3">
+                  <span className="text-xs font-medium tabular-nums">
+                    {selectedProjectIds.length} {selectedProjectIds.length === 1 ? 'page' : 'pages'} selected
+                  </span>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      disabled={busyAction}
+                      onClick={() => void handleBulkAction('publish')}
+                      className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 cursor-pointer"
+                    >
+                      Bulk Publish
+                    </button>
+                    <button
+                      type="button"
+                      disabled={busyAction}
+                      onClick={() => void handleBulkAction('unpublish')}
+                      className="px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-semibold hover:bg-amber-700 cursor-pointer"
+                    >
+                      Bulk Unpublish
+                    </button>
+                    <button
+                      type="button"
+                      disabled={busyAction}
+                      onClick={() => void handleBulkAction('delete')}
+                      className="px-3 py-1.5 rounded-lg bg-rose-600 text-white text-xs font-semibold hover:bg-rose-700 cursor-pointer"
+                    >
+                      Bulk Delete
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedProjectIds([])}
+                      className="px-2.5 py-1.5 text-xs text-stone-300 hover:text-white underline cursor-pointer"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                </div>
+              )}
 
               <div className="bg-white border border-stone-200 rounded-xl overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs">
                     <thead className="bg-[#FAF9F7] text-zinc-500 border-b border-stone-200">
                       <tr>
-                        <th className="px-5 py-3 font-medium">Page</th>
-                        <th className="px-5 py-3 font-medium">ID</th>
-                        <th className="px-5 py-3 font-medium">Status</th>
-                        <th className="px-5 py-3 font-medium text-right">Visits</th>
-                        <th className="px-5 py-3 font-medium">Expires</th>
+                        <th className="pl-5 pr-2 py-3 w-8">
+                          <input
+                            type="checkbox"
+                            aria-label="Select all filtered pages"
+                            checked={
+                              filteredProjects.length > 0 &&
+                              filteredProjects.every((p) => selectedProjectIds.includes(p.id))
+                            }
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedProjectIds(filteredProjects.map((p) => p.id));
+                              } else {
+                                setSelectedProjectIds([]);
+                              }
+                            }}
+                            className="w-3.5 h-3.5 accent-zinc-900 cursor-pointer"
+                          />
+                        </th>
+                        <th className="px-4 py-3 font-medium">Page</th>
+                        <th className="px-4 py-3 font-medium">ID</th>
+                        <th className="px-4 py-3 font-medium">Status</th>
+                        <th className="px-4 py-3 font-medium text-right">Visits</th>
+                        <th className="px-4 py-3 font-medium">Expires</th>
                         <th className="px-5 py-3 font-medium text-right">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-stone-100">
                       {filteredProjects.length === 0 ? (
                         <tr>
-                          <td colSpan={6} className="px-5 py-10 text-center text-zinc-500">
+                          <td colSpan={7} className="px-5 py-10 text-center text-zinc-500">
                             No birthday pages match this filter.
                           </td>
                         </tr>
                       ) : (
-                        filteredProjects.map((p) => (
-                          <tr key={p.id} className="hover:bg-stone-50/70">
-                            <td className="px-5 py-3.5">
-                              <p className="font-semibold text-zinc-900">{p.recipientName}</p>
-                              <p className="text-[11px] text-zinc-500">
-                                From {p.senderName} · {p.photos.length} photos
-                              </p>
-                            </td>
-                            <td className="px-5 py-3.5 font-mono text-[11px] text-zinc-600">{p.id}</td>
-                            <td className="px-5 py-3.5">
-                              <span
-                                className={`font-medium capitalize ${
-                                  p.status === 'published'
-                                    ? 'text-emerald-700'
-                                    : p.status === 'unpublished'
-                                      ? 'text-amber-700'
-                                      : 'text-zinc-500'
-                                }`}
-                              >
-                                {p.status}
-                              </span>
-                            </td>
-                            <td className="px-5 py-3.5 text-right font-mono tabular-nums text-zinc-900">
-                              {p.visitCount}
-                            </td>
-                            <td className="px-5 py-3.5 font-mono tabular-nums text-[11px] text-zinc-500">
-                              {new Date(p.expiresAt).toLocaleDateString()}
-                            </td>
-                            <td className="px-5 py-3.5 text-right">
-                              <div className="inline-flex items-center gap-2">
-                                {p.status === 'published' && (
+                        filteredProjects.map((p) => {
+                          const checked = selectedProjectIds.includes(p.id);
+                          return (
+                            <tr key={p.id} className="hover:bg-stone-50/70">
+                              <td className="pl-5 pr-2 py-3.5">
+                                <input
+                                  type="checkbox"
+                                  aria-label={`Select ${p.recipientName}`}
+                                  checked={checked}
+                                  onChange={(e) => {
+                                    setSelectedProjectIds((prev) =>
+                                      e.target.checked ? [...prev, p.id] : prev.filter((x) => x !== p.id)
+                                    );
+                                  }}
+                                  className="w-3.5 h-3.5 accent-zinc-900 cursor-pointer"
+                                />
+                              </td>
+                              <td className="px-4 py-3.5">
+                                <p className="font-semibold text-zinc-900">{p.recipientName}</p>
+                                <p className="text-[11px] text-zinc-500">
+                                  From {p.senderName} · {p.photos.length} photos · {p.wishes.length} wishes
+                                </p>
+                              </td>
+                              <td className="px-4 py-3.5 font-mono text-[11px] text-zinc-600">{p.id}</td>
+                              <td className="px-4 py-3.5">
+                                <span
+                                  className={`font-medium capitalize ${
+                                    p.status === 'published'
+                                      ? 'text-emerald-700'
+                                      : p.status === 'unpublished'
+                                        ? 'text-amber-700'
+                                        : 'text-zinc-500'
+                                  }`}
+                                >
+                                  {p.status}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3.5 text-right font-mono tabular-nums text-zinc-900">
+                                {p.visitCount}
+                              </td>
+                              <td className="px-4 py-3.5 font-mono tabular-nums text-[11px] text-zinc-500">
+                                {new Date(p.expiresAt).toLocaleDateString()}
+                              </td>
+                              <td className="px-5 py-3.5 text-right">
+                                <div className="inline-flex items-center gap-2">
                                   <button
                                     type="button"
-                                    onClick={() => onNavigate(`/b/${p.id}`)}
-                                    className="text-zinc-600 hover:text-zinc-900 underline underline-offset-2 cursor-pointer"
+                                    onClick={() => setInspectedProject(p)}
+                                    className="inline-flex items-center gap-1 px-2 py-1 rounded border border-stone-300 text-zinc-700 hover:bg-stone-100 cursor-pointer"
                                   >
-                                    Open
+                                    <Eye className="w-3 h-3" />
+                                    Inspect
                                   </button>
-                                )}
-                                <button
-                                  type="button"
-                                  onClick={() => void handleToggleProjectStatus(p)}
-                                  className="px-2.5 py-1 rounded border border-stone-300 text-zinc-800 hover:bg-stone-100 cursor-pointer"
-                                >
-                                  {p.status === 'published' ? 'Unpublish' : 'Publish'}
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => void handleDeleteProject(p)}
-                                  className="p-1.5 rounded text-rose-700 hover:bg-rose-50 cursor-pointer"
-                                  aria-label={`Delete ${p.id}`}
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))
+                                  {p.status === 'published' && (
+                                    <button
+                                      type="button"
+                                      onClick={() => onNavigate(`/b/${p.id}`)}
+                                      className="text-zinc-600 hover:text-zinc-900 underline underline-offset-2 cursor-pointer"
+                                    >
+                                      Open
+                                    </button>
+                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={() => void handleToggleProjectStatus(p)}
+                                    className="px-2.5 py-1 rounded border border-stone-300 text-zinc-800 hover:bg-stone-100 cursor-pointer"
+                                  >
+                                    {p.status === 'published' ? 'Unpublish' : 'Publish'}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => void handleDeleteProject(p)}
+                                    className="p-1.5 rounded text-rose-700 hover:bg-rose-50 cursor-pointer"
+                                    aria-label={`Delete ${p.id}`}
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })
                       )}
                     </tbody>
                   </table>
@@ -1172,11 +1467,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onCa
                     onChange={(e) => setAnimEffect(e.target.value as AnimationEffectType)}
                     className="rounded-lg border border-stone-300 px-3 py-2 text-xs bg-white"
                   >
-                    <option value="confetti">Confetti Burst</option>
-                    <option value="fireworks">Midnight Fireworks</option>
-                    <option value="embers">Candlelight Embers</option>
-                    <option value="petals">Botanical Petals</option>
-                    <option value="starlight">Starlight Shimmer</option>
+                    <option value="confetti">2D Foil Confetti</option>
+                    <option value="fireworks">2D Radial Fireworks</option>
+                    <option value="embers">2D Candlelight Embers</option>
+                    <option value="petals">2D Botanical Petals</option>
+                    <option value="starlight">2D Twinkling Starlight</option>
+                    <option value="balloons">2D Floating Silk Balloons</option>
+                    <option value="butterflies">2D Fluttering Butterflies</option>
+                    <option value="hearts">2D Origami Rising Hearts</option>
+                    <option value="ribbons">2D Curling Streamer Ribbons</option>
+                    <option value="snowsparkle">2D Champagne Sparkle Bubbles</option>
                   </select>
                   <select
                     value={animIntensity}
@@ -1631,6 +1931,226 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onCa
                   {busyAction ? 'Cleaning...' : 'Run Storage Cleanup Now'}
                 </button>
               </div>
+
+              {/* Live Uploaded Media Browser */}
+              <div className="bg-white border border-stone-200 rounded-xl overflow-hidden">
+                <div className="px-6 py-4 border-b border-stone-200 flex items-center justify-between">
+                  <div>
+                    <h2 className="text-sm font-semibold text-zinc-900">Uploaded Media Files</h2>
+                    <p className="text-xs text-zinc-500">Inspect disk uploads and delete orphaned or unwanted assets.</p>
+                  </div>
+                  <span className="text-xs font-mono tabular-nums text-zinc-500">{mediaFiles.length} files</span>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-[#FAF9F7] text-zinc-500 border-b border-stone-200">
+                      <tr>
+                        <th className="px-5 py-3 font-medium">File</th>
+                        <th className="px-5 py-3 font-medium">Folder</th>
+                        <th className="px-5 py-3 font-medium">Reference</th>
+                        <th className="px-5 py-3 font-medium text-right">Size</th>
+                        <th className="px-5 py-3 font-medium text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-stone-100">
+                      {mediaFiles.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="px-5 py-8 text-center text-zinc-500">
+                            No user-uploaded media files currently on disk.
+                          </td>
+                        </tr>
+                      ) : (
+                        mediaFiles.map((file) => (
+                          <tr key={file.url} className="hover:bg-stone-50/70">
+                            <td className="px-5 py-3 font-mono text-[11px] text-zinc-800 max-w-xs truncate">
+                              {file.filename}
+                            </td>
+                            <td className="px-5 py-3 capitalize text-zinc-600">{file.category}</td>
+                            <td className="px-5 py-3">
+                              <span className={file.inUse ? 'text-emerald-700 font-medium' : 'text-amber-700 font-medium'}>
+                                {file.inUse ? 'In use' : 'Orphaned'}
+                              </span>
+                            </td>
+                            <td className="px-5 py-3 text-right font-mono tabular-nums text-zinc-700">
+                              {formatBytes(file.sizeBytes)}
+                            </td>
+                            <td className="px-5 py-3 text-right">
+                              <div className="inline-flex items-center gap-3">
+                                <a
+                                  href={file.url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-zinc-600 hover:text-zinc-900 underline underline-offset-2"
+                                >
+                                  Preview
+                                </a>
+                                <button
+                                  type="button"
+                                  disabled={busyAction}
+                                  onClick={() => void handleDeleteMediaFile(file)}
+                                  className="text-rose-700 hover:underline cursor-pointer"
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ─── 8B. ACTIVITY AUDIT LOG & SECURITY CONTROLS ────────────────── */}
+          {section === 'activity' && (
+            <div className="space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h1 className="font-display text-2xl font-semibold text-zinc-900">Activity Log & Security</h1>
+                  <p className="text-xs text-zinc-500 mt-1">
+                    Track administrative actions, reset IP rate limits, rotate your admin password, and export backups.
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleExportAuditCsv}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-stone-300 bg-white text-xs font-medium text-zinc-800 hover:bg-stone-100 whitespace-nowrap shrink-0 cursor-pointer"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    Export Audit CSV
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busyAction}
+                    onClick={() => void handleDownloadFullBackup()}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-zinc-900 text-white text-xs font-semibold hover:bg-zinc-800 whitespace-nowrap shrink-0 cursor-pointer"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    Backup JSON
+                  </button>
+                </div>
+              </div>
+
+              {/* Security Tools Row */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <form
+                  onSubmit={handleChangeAdminPassword}
+                  className="bg-white border border-stone-200 rounded-xl p-6 space-y-4"
+                >
+                  <div className="flex items-center gap-2">
+                    <KeyRound className="w-4 h-4 text-zinc-700" />
+                    <h2 className="text-sm font-semibold text-zinc-900">Update Administrator Password</h2>
+                  </div>
+                  <p className="text-xs text-zinc-500">
+                    Passwords are hashed with scrypt on the backend and are never displayed in this dashboard.
+                  </p>
+                  <div className="space-y-3">
+                    <input
+                      type="password"
+                      required
+                      autoComplete="current-password"
+                      value={currentPwd}
+                      onChange={(e) => setCurrentPwd(e.target.value)}
+                      placeholder="Current password"
+                      className="w-full rounded-lg border border-stone-300 px-3 py-2 text-xs"
+                    />
+                    <input
+                      type="password"
+                      required
+                      minLength={6}
+                      autoComplete="new-password"
+                      value={newPwd}
+                      onChange={(e) => setNewPwd(e.target.value)}
+                      placeholder="New password (minimum 6 characters)"
+                      className="w-full rounded-lg border border-stone-300 px-3 py-2 text-xs"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={busyAction}
+                    className="px-4 py-2 rounded-lg bg-zinc-900 text-white text-xs font-semibold hover:bg-zinc-800 disabled:opacity-60 cursor-pointer"
+                  >
+                    {busyAction ? 'Updating...' : 'Save New Password'}
+                  </button>
+                </form>
+
+                <div className="bg-white border border-stone-200 rounded-xl p-6 flex flex-col justify-between gap-4">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <ShieldCheck className="w-4 h-4 text-zinc-700" />
+                      <h2 className="text-sm font-semibold text-zinc-900">Rate Limit & Abuse Controls</h2>
+                    </div>
+                    <p className="text-xs text-zinc-600 leading-relaxed">
+                      Public creation and publishing are capped at{' '}
+                      <span className="font-mono font-semibold">{settingsForm?.rateLimitPerHour || 30}</span> actions per
+                      IP per hour. If a shared school, office, or event venue hits this ceiling legitimately, you can
+                      reset all active IP buckets immediately.
+                    </p>
+                  </div>
+                  <div>
+                    <button
+                      type="button"
+                      disabled={busyAction}
+                      onClick={() => void handleResetRateLimits()}
+                      className="px-4 py-2 rounded-lg border border-stone-300 text-xs font-semibold text-zinc-900 hover:bg-stone-100 cursor-pointer"
+                    >
+                      Reset Active IP Rate Limits
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Audit Log Table */}
+              <div className="bg-white border border-stone-200 rounded-xl overflow-hidden">
+                <div className="px-6 py-4 border-b border-stone-200 flex flex-wrap items-center justify-between gap-3">
+                  <h2 className="text-sm font-semibold text-zinc-900">Administrative Audit Trail</h2>
+                  <input
+                    type="search"
+                    value={auditSearch}
+                    onChange={(e) => setAuditSearch(e.target.value)}
+                    placeholder="Filter action, target, or details..."
+                    className="rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-xs text-zinc-900 w-60"
+                  />
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-[#FAF9F7] text-zinc-500 border-b border-stone-200">
+                      <tr>
+                        <th className="px-5 py-3 font-medium">Timestamp</th>
+                        <th className="px-5 py-3 font-medium">Actor</th>
+                        <th className="px-5 py-3 font-medium">Action</th>
+                        <th className="px-5 py-3 font-medium">Target</th>
+                        <th className="px-5 py-3 font-medium">Details</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-stone-100">
+                      {filteredAuditLogs.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="px-5 py-8 text-center text-zinc-500">
+                            No audit log entries recorded yet.
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredAuditLogs.slice(0, 100).map((log) => (
+                          <tr key={log.id} className="hover:bg-stone-50/70">
+                            <td className="px-5 py-3 font-mono tabular-nums text-[11px] text-zinc-500 whitespace-nowrap">
+                              {new Date(log.createdAt).toLocaleString()}
+                            </td>
+                            <td className="px-5 py-3 font-mono text-[11px] text-zinc-800">{log.actor}</td>
+                            <td className="px-5 py-3 font-medium text-zinc-900">{log.action}</td>
+                            <td className="px-5 py-3 font-mono text-[11px] text-zinc-600">{log.target}</td>
+                            <td className="px-5 py-3 text-zinc-600">{log.details}</td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
           )}
 
@@ -1776,6 +2296,43 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onCa
                     className="w-4 h-4 accent-zinc-900"
                   />
                 </label>
+
+                <label className="flex items-center justify-between pt-2 border-t border-stone-200 text-xs text-zinc-700 cursor-pointer">
+                  <span>Maintenance Mode (pause new creations in Builder Studio; live pages remain viewable)</span>
+                  <input
+                    type="checkbox"
+                    checked={Boolean(settingsForm.maintenanceMode)}
+                    onChange={(e) =>
+                      setSettingsForm((s) => (s ? { ...s, maintenanceMode: e.target.checked } : s))
+                    }
+                    className="w-4 h-4 accent-zinc-900"
+                  />
+                </label>
+              </div>
+
+              <div className="bg-white border border-stone-200 rounded-xl p-6 space-y-4">
+                <h2 className="text-sm font-semibold text-zinc-900">Global Site Announcement Banner</h2>
+                <label className="flex items-center justify-between text-xs text-zinc-700 cursor-pointer">
+                  <span>Display announcement bar across public pages</span>
+                  <input
+                    type="checkbox"
+                    checked={Boolean(settingsForm.announcementEnabled)}
+                    onChange={(e) =>
+                      setSettingsForm((s) => (s ? { ...s, announcementEnabled: e.target.checked } : s))
+                    }
+                    className="w-4 h-4 accent-zinc-900"
+                  />
+                </label>
+                <input
+                  type="text"
+                  maxLength={180}
+                  value={settingsForm.announcementText || ''}
+                  onChange={(e) =>
+                    setSettingsForm((s) => (s ? { ...s, announcementText: e.target.value } : s))
+                  }
+                  placeholder="e.g., New Royal Champagne & Sakura templates are now live in the studio!"
+                  className="w-full rounded-lg border border-stone-300 px-3 py-2 text-xs"
+                />
               </div>
 
               <button
@@ -1789,6 +2346,136 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onCa
           )}
         </main>
       </div>
+
+      {/* Project Inspector Modal */}
+      {inspectedProject && (
+        <div
+          className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4"
+          onClick={() => setInspectedProject(null)}
+        >
+          <div
+            className="max-w-2xl w-full bg-white rounded-2xl border border-stone-200 p-6 sm:p-7 space-y-5 max-h-[88vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-4 border-b border-stone-200 pb-4">
+              <div>
+                <p className="text-xs font-mono text-zinc-500">
+                  {inspectedProject.id} · {inspectedProject.status} · {inspectedProject.visitCount} visits
+                </p>
+                <h2 className="font-display text-2xl font-semibold text-zinc-900 mt-0.5">
+                  {inspectedProject.recipientName}
+                </h2>
+                <p className="text-xs text-zinc-600 mt-0.5">From {inspectedProject.senderName}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setInspectedProject(null)}
+                aria-label="Close inspector"
+                className="p-1.5 rounded-lg text-zinc-500 hover:bg-stone-100 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-2 text-xs">
+              <p className="font-semibold text-zinc-900">{inspectedProject.headline}</p>
+              <p className="text-zinc-600 whitespace-pre-line leading-relaxed">{inspectedProject.message}</p>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs border-y border-stone-200 py-4">
+              <div>
+                <p className="text-zinc-500">Template</p>
+                <p className="font-mono text-zinc-900 truncate mt-0.5">{inspectedProject.templateId}</p>
+              </div>
+              <div>
+                <p className="text-zinc-500">Photos · Wishes</p>
+                <p className="font-mono tabular-nums text-zinc-900 mt-0.5">
+                  {inspectedProject.photos.length} · {inspectedProject.wishes.length}
+                </p>
+              </div>
+              <div>
+                <p className="text-zinc-500">Storage</p>
+                <p className="font-mono tabular-nums text-zinc-900 mt-0.5">
+                  {formatBytes(inspectedProject.storageBytes)}
+                </p>
+              </div>
+              <div>
+                <p className="text-zinc-500">Expires</p>
+                <p className="font-mono tabular-nums text-zinc-900 mt-0.5">
+                  {new Date(inspectedProject.expiresAt).toLocaleDateString()}
+                </p>
+              </div>
+            </div>
+
+            {inspectedProject.photos.length > 0 && (
+              <div>
+                <p className="text-xs font-medium text-zinc-700 mb-2">Attached Photos</p>
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5">
+                  {inspectedProject.photos.map((ph) => (
+                    <a
+                      key={ph.id}
+                      href={ph.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="aspect-[4/3] rounded-lg overflow-hidden border border-stone-200 bg-stone-100 block"
+                    >
+                      <img
+                        src={ph.url}
+                        alt={ph.caption || 'Attached photo'}
+                        referrerPolicy="no-referrer"
+                        className="w-full h-full object-cover"
+                      />
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  disabled={busyAction}
+                  onClick={() => void handleExtendProject(inspectedProject.id, 30)}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-stone-300 text-xs font-medium text-zinc-800 hover:bg-stone-100 cursor-pointer"
+                >
+                  <Clock className="w-3.5 h-3.5" />
+                  Extend +30d
+                </button>
+                <button
+                  type="button"
+                  disabled={busyAction}
+                  onClick={() => void handleExtendProject(inspectedProject.id, 90)}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-stone-300 text-xs font-medium text-zinc-800 hover:bg-stone-100 cursor-pointer"
+                >
+                  <Clock className="w-3.5 h-3.5" />
+                  Extend +90d
+                </button>
+                <button
+                  type="button"
+                  disabled={busyAction}
+                  onClick={() => void handleRevokeToken(inspectedProject.id)}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-amber-300 text-xs font-medium text-amber-800 hover:bg-amber-50 cursor-pointer"
+                >
+                  <KeyRound className="w-3.5 h-3.5" />
+                  Revoke Edit Token
+                </button>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  const target = inspectedProject;
+                  setInspectedProject(null);
+                  void handleDeleteProject(target);
+                }}
+                className="px-3 py-2 rounded-lg bg-rose-600 text-white text-xs font-semibold hover:bg-rose-700 cursor-pointer"
+              >
+                Delete Page
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

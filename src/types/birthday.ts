@@ -1,6 +1,16 @@
 export type FontStyle = 'editorial' | 'modern' | 'classic';
 export type ProjectStatus = 'draft' | 'published' | 'unpublished';
-export type AnimationEffectType = 'confetti' | 'fireworks' | 'embers' | 'petals' | 'starlight';
+export type AnimationEffectType =
+  | 'confetti'
+  | 'fireworks'
+  | 'embers'
+  | 'petals'
+  | 'starlight'
+  | 'balloons'
+  | 'butterflies'
+  | 'hearts'
+  | 'ribbons'
+  | 'snowsparkle';
 export type AnimationIntensity = 'gentle' | 'balanced' | 'festive';
 export type ReportReason = 'spam' | 'inappropriate' | 'harassment' | 'copyright' | 'other';
 export type ReportStatus = 'open' | 'resolved' | 'dismissed';
@@ -112,6 +122,9 @@ export interface SiteSettings {
   tagline: string;
   heroHeadline: string;
   footerNote: string;
+  announcementEnabled?: boolean;
+  announcementText?: string;
+  maintenanceMode?: boolean;
   maxImageSizeMb: number;
   maxAudioSizeMb: number;
   maxPhotosPerProject: number;
@@ -119,6 +132,24 @@ export interface SiteSettings {
   rateLimitPerHour: number;
   allowPublicPublishing: boolean;
   updatedAt: string;
+}
+
+export interface AdminAuditLog {
+  id: string;
+  actor: string;
+  action: string;
+  target: string;
+  details: string;
+  createdAt: string;
+}
+
+export interface MediaFileEntry {
+  url: string;
+  filename: string;
+  category: 'photos' | 'backgrounds' | 'music';
+  sizeBytes: number;
+  modifiedAt: string;
+  inUse: boolean;
 }
 
 export interface PublicCatalog {

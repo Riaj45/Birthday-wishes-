@@ -9,6 +9,7 @@ import type {
   MusicTrack,
 } from '../types/birthday';
 import { birthdayAudio } from '../utils/audioEngine';
+import { GreetingCard2DCanvas } from './GreetingCard2DCanvas';
 
 interface BirthdayCanvasProps {
   project: BirthdayProject;
@@ -18,15 +19,6 @@ interface BirthdayCanvasProps {
   isPreview?: boolean;
   triggerSignal?: number;
 }
-
-const PARTICLE_SEEDS = Array.from({ length: 22 }, (_, i) => ({
-  id: i,
-  left: ((i * 37 + 11) % 94) + 3,
-  top: ((i * 29 + 7) % 86) + 5,
-  size: 5 + (i % 5) * 2.5,
-  delay: (i * 0.45) % 6,
-  duration: 6 + (i % 6) * 1.6,
-}));
 
 export const BirthdayCanvas: React.FC<BirthdayCanvasProps> = ({
   project,
@@ -42,14 +34,13 @@ export const BirthdayCanvas: React.FC<BirthdayCanvasProps> = ({
   const [musicPlaying, setMusicPlaying] = useState(false);
   const [lightboxPhoto, setLightboxPhoto] = useState<BirthdayPhoto | null>(null);
   const [bgFailed, setBgFailed] = useState(false);
+  const [burstKey, setBurstKey] = useState(0);
   const canvasHostRef = useRef<HTMLDivElement | null>(null);
 
   const isDark = template?.themeMode === 'dark';
   const accent = project.accentColor || template?.accentColor || '#E11D48';
   const effectType = animationPreset?.effectType || 'confetti';
   const intensity = animationPreset?.intensity || 'balanced';
-
-  const particleCount = intensity === 'festive' ? 22 : intensity === 'balanced' ? 14 : 9;
 
   const headlineFontClass = useMemo(() => {
     if (project.fontStyle === 'modern') return 'font-sans tracking-tight';
@@ -78,6 +69,7 @@ export const BirthdayCanvas: React.FC<BirthdayCanvasProps> = ({
   }, [isPreview]);
 
   const fireCelebrationBurst = useCallback(() => {
+    setBurstKey((k) => k + 1);
     if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
     const count = intensity === 'festive' ? 90 : intensity === 'balanced' ? 55 : 30;
     const palette = [accent, '#F59E0B', '#FDE68A', '#FB7185', '#FFFFFF'];
@@ -178,7 +170,59 @@ export const BirthdayCanvas: React.FC<BirthdayCanvasProps> = ({
           />
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/55 to-black/45" />
-        <div className="relative z-10 max-w-md w-full bg-[#FAF9F7] text-zinc-900 rounded-xl border border-stone-200 p-10 text-center">
+        <GreetingCard2DCanvas
+          effectType={effectType}
+          intensity="gentle"
+          accentColor={accent}
+          burstKey={0}
+        />
+        <div className="relative z-20 max-w-md w-full bg-[#FAF9F7] text-zinc-900 rounded-xl border border-stone-200 p-8 sm:p-10 text-center group">
+          {/* 2D Animated Wax-Sealed Greeting Envelope Illustration */}
+          <div className="w-28 h-20 mx-auto mb-6 relative" aria-hidden="true">
+            <svg viewBox="0 0 120 84" className="w-full h-full overflow-visible">
+              <rect
+                x="4"
+                y="12"
+                width="112"
+                height="68"
+                rx="6"
+                fill="#FFFFFF"
+                stroke="#D6D3D1"
+                strokeWidth="1.5"
+              />
+              {/* Inner greeting card peeking subtly on hover */}
+              <rect
+                x="14"
+                y="18"
+                width="92"
+                height="48"
+                rx="3"
+                fill="#FEF3C7"
+                stroke="#FDE68A"
+                strokeWidth="1"
+                className="transition-transform duration-500 ease-out group-hover:-translate-y-2.5"
+              />
+              {/* Envelope lower folds */}
+              <path d="M4 78 L60 44 L116 78 Z" fill="#F5F5F4" stroke="#D6D3D1" strokeWidth="1.2" />
+              <path d="M4 14 L52 46 L4 78 Z" fill="#FAF9F7" stroke="#E7E5E4" strokeWidth="1" />
+              <path d="M116 14 L68 46 L116 78 Z" fill="#FAF9F7" stroke="#E7E5E4" strokeWidth="1" />
+              {/* Top Flap */}
+              <path
+                d="M4 14 L60 50 L116 14 Z"
+                fill="#FFFFFF"
+                stroke="#D6D3D1"
+                strokeWidth="1.3"
+                className="origin-top transition-transform duration-500 ease-out group-hover:-translate-y-0.5"
+              />
+              {/* Wax Seal */}
+              <circle cx="60" cy="48" r="10.5" fill={accent} />
+              <circle cx="60" cy="48" r="7.5" fill="none" stroke="rgba(255,255,255,0.45)" strokeWidth="1" />
+              <path
+                d="M60 44.5 L61.2 47 L63.8 47.4 L61.9 49.2 L62.4 51.8 L60 50.5 L57.6 51.8 L58.1 49.2 L56.2 47.4 L58.8 47 Z"
+                fill="#FFFFFF"
+              />
+            </svg>
+          </div>
           <p className="text-xs font-medium text-zinc-500 mb-3">
             A Birthday Invitation {project.eventDate ? `· ${project.eventDate}` : ''}
           </p>
@@ -208,61 +252,13 @@ export const BirthdayCanvas: React.FC<BirthdayCanvasProps> = ({
         isDark ? 'bg-[#121318] text-stone-100' : 'bg-[#FAF9F7] text-zinc-900'
       }`}
     >
-      {/* Ambient Animated Particles Layer */}
-      <div className="pointer-events-none absolute inset-0 overflow-hidden z-10" aria-hidden="true">
-        {effectType === 'embers' &&
-          PARTICLE_SEEDS.slice(0, particleCount).map((p) => (
-            <span
-              key={p.id}
-              className="absolute rounded-full animate-float-up"
-              style={{
-                left: `${p.left}%`,
-                bottom: '-12px',
-                width: `${p.size}px`,
-                height: `${p.size}px`,
-                backgroundColor: p.id % 2 === 0 ? '#F59E0B' : '#FDE68A',
-                animationDelay: `${p.delay}s`,
-                animationDuration: `${p.duration}s`,
-                boxShadow: '0 0 12px rgba(245, 158, 11, 0.75)',
-              }}
-            />
-          ))}
-
-        {effectType === 'petals' &&
-          PARTICLE_SEEDS.slice(0, particleCount).map((p) => (
-            <span
-              key={p.id}
-              className="absolute animate-drift-down"
-              style={{
-                left: `${p.left}%`,
-                top: '-18px',
-                width: `${p.size + 4}px`,
-                height: `${p.size}px`,
-                borderRadius: '60% 40% 60% 40%',
-                backgroundColor: p.id % 3 === 0 ? accent : p.id % 2 === 0 ? '#FBCFE8' : '#FDE68A',
-                animationDelay: `${p.delay}s`,
-                animationDuration: `${p.duration + 1.5}s`,
-              }}
-            />
-          ))}
-
-        {effectType === 'starlight' &&
-          PARTICLE_SEEDS.slice(0, particleCount).map((p) => (
-            <span
-              key={p.id}
-              className="absolute rounded-full animate-twinkle"
-              style={{
-                left: `${p.left}%`,
-                top: `${p.top}%`,
-                width: `${Math.max(3, p.size * 0.55)}px`,
-                height: `${Math.max(3, p.size * 0.55)}px`,
-                backgroundColor: p.id % 2 === 0 ? '#FEF3C7' : accent,
-                animationDelay: `${p.delay * 0.7}s`,
-                animationDuration: `${2.2 + (p.id % 4)}s`,
-              }}
-            />
-          ))}
-      </div>
+      {/* 60fps Interactive 2D Greeting Card Animation Engine (10 Modes) */}
+      <GreetingCard2DCanvas
+        effectType={effectType}
+        intensity={intensity}
+        accentColor={accent}
+        burstKey={burstKey}
+      />
 
       {/* Hero Cover Section */}
       <section className="relative min-h-[460px] sm:min-h-[540px] flex items-end overflow-hidden">

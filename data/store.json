@@ -1,6 +1,49 @@
 {
   "projects": [
     {
+      "id": "1jMCRawSYB8",
+      "recipientName": "Elena",
+      "senderName": "Your Favorite Crew",
+      "age": 28,
+      "headline": "Happy 28th Birthday, Elena",
+      "message": "Wishing you a year filled with warm mornings, brave new chapters, and laughter around every table. Blow out the candles below and make your wish.",
+      "eventDate": "November 23",
+      "templateId": "golden-candlelight",
+      "backgroundId": "bg-golden-candlelight",
+      "backgroundUrl": "/src/assets/images/template_golden_candlelight_1795407298151.jpg",
+      "musicId": "candlelight-music-box",
+      "musicUrl": "",
+      "animationPresetId": "amber-embers",
+      "accentColor": "#D97706",
+      "fontStyle": "editorial",
+      "showCake": true,
+      "showEnvelopeIntro": true,
+      "status": "published",
+      "visitCount": 0,
+      "storageBytes": 416150,
+      "wishes": [
+        {
+          "id": "w-init-1",
+          "author": "Maya",
+          "relationship": "Best Friend",
+          "text": "So grateful for another year of late-night talks and spontaneous coffee runs!"
+        }
+      ],
+      "photos": [
+        {
+          "id": "ph_1795422071219_9yg6r",
+          "url": "/uploads/photos/1795421460841-tXBbSzGq.jpg",
+          "caption": "Sana",
+          "sizeBytes": 416150,
+          "storageSource": "server"
+        }
+      ],
+      "createdAt": "2026-11-23T08:30:25.807Z",
+      "updatedAt": "2026-11-23T08:30:25.807Z",
+      "expiresAt": "2027-02-21T08:30:25.807Z",
+      "editTokenHash": "50351b0d5a5b686cac6e96f43e7d71f3f7bbd789724b9892ab4f37aa2f491112"
+    },
+    {
       "id": "showcase-clara-30",
       "recipientName": "Clara Vance",
       "senderName": "Elena & Friends",
@@ -19,7 +62,7 @@
       "showCake": true,
       "showEnvelopeIntro": true,
       "status": "published",
-      "visitCount": 48,
+      "visitCount": 54,
       "storageBytes": 0,
       "wishes": [
         {
@@ -162,6 +205,62 @@
       "defaultMusicId": "happy-birthday-chimes",
       "active": true,
       "updatedAt": "2026-11-23T05:42:55.663Z"
+    },
+    {
+      "id": "royal-champagne",
+      "name": "Royal Champagne Toast",
+      "category": "Milestone",
+      "description": "Crystal coupe glasses, warm chandelier bokeh on espresso marble, and effervescent gold bubbles.",
+      "previewImage": "/src/assets/images/template_royal_champagne_1795418312549.jpg",
+      "themeMode": "dark",
+      "accentColor": "#D97706",
+      "fontStyle": "classic",
+      "defaultAnimationId": "champagne-bubbles",
+      "defaultMusicId": "candlelight-music-box",
+      "active": true,
+      "updatedAt": "2026-11-23T09:12:27.783Z"
+    },
+    {
+      "id": "coastal-sunset",
+      "name": "Coastal Sunset Breeze",
+      "category": "Editorial",
+      "description": "Sun-drenched Mediterranean linen terrace overlooking a golden horizon with fluttering butterflies.",
+      "previewImage": "/src/assets/images/template_coastal_sunset_1795418299674.jpg",
+      "themeMode": "light",
+      "accentColor": "#EA580C",
+      "fontStyle": "editorial",
+      "defaultAnimationId": "golden-butterflies",
+      "defaultMusicId": "golden-hour-waltz",
+      "active": true,
+      "updatedAt": "2026-11-23T09:12:27.783Z"
+    },
+    {
+      "id": "sakura-springtime",
+      "name": "Sakura Springtime",
+      "category": "Nostalgic",
+      "description": "Soft cherry blossom branches, handmade cotton stationery, and floating paper hearts.",
+      "previewImage": "/src/assets/images/template_sakura_blossom_1795418306311.jpg",
+      "themeMode": "light",
+      "accentColor": "#DB2777",
+      "fontStyle": "editorial",
+      "defaultAnimationId": "paper-hearts",
+      "defaultMusicId": "candlelight-music-box",
+      "active": true,
+      "updatedAt": "2026-11-23T09:12:27.783Z"
+    },
+    {
+      "id": "afterhours-disco",
+      "name": "After-Hours Disco Lounge",
+      "category": "Evening",
+      "description": "Mirrored rose-gold disco light reflections across charcoal stone with festive streamer ribbons.",
+      "previewImage": "/src/assets/images/template_afterhours_disco_1795418305440.jpg",
+      "themeMode": "dark",
+      "accentColor": "#E11D48",
+      "fontStyle": "modern",
+      "defaultAnimationId": "festive-ribbons",
+      "defaultMusicId": "happy-birthday-chimes",
+      "active": true,
+      "updatedAt": "2026-11-23T09:12:27.783Z"
     }
   ],
   "animationPresets": [
@@ -209,6 +308,51 @@
       "description": "Subtle twinkling starlight sparkles shimmering behind the greeting.",
       "active": true,
       "updatedAt": "2026-11-23T05:42:55.663Z"
+    },
+    {
+      "id": "silk-balloons",
+      "name": "Silk Balloon Parade",
+      "effectType": "balloons",
+      "intensity": "balanced",
+      "description": "2D matte silk balloons with curved strings floating gently upward across the card.",
+      "active": true,
+      "updatedAt": "2026-11-23T09:12:27.783Z"
+    },
+    {
+      "id": "golden-butterflies",
+      "name": "Golden Butterflies",
+      "effectType": "butterflies",
+      "intensity": "gentle",
+      "description": "Animated 2D wing-flapping butterflies gliding smoothly across your greeting card.",
+      "active": true,
+      "updatedAt": "2026-11-23T09:12:27.783Z"
+    },
+    {
+      "id": "paper-hearts",
+      "name": "Floating Paper Hearts",
+      "effectType": "hearts",
+      "intensity": "gentle",
+      "description": "Layered 2D origami hearts drifting upward with warm celebratory sway.",
+      "active": true,
+      "updatedAt": "2026-11-23T09:12:27.783Z"
+    },
+    {
+      "id": "festive-ribbons",
+      "name": "Festive Streamer Ribbons",
+      "effectType": "ribbons",
+      "intensity": "festive",
+      "description": "Curling 2D celebratory party streamers cascading smoothly down the card.",
+      "active": true,
+      "updatedAt": "2026-11-23T09:12:27.783Z"
+    },
+    {
+      "id": "champagne-bubbles",
+      "name": "Champagne Shimmer",
+      "effectType": "snowsparkle",
+      "intensity": "balanced",
+      "description": "Effervescent golden champagne bubbles rising and glistening softly.",
+      "active": true,
+      "updatedAt": "2026-11-23T09:12:27.783Z"
     }
   ],
   "musicTracks": [
@@ -302,6 +446,42 @@
       "sizeBytes": 0,
       "active": true,
       "updatedAt": "2026-11-23T05:42:55.663Z"
+    },
+    {
+      "id": "bg-royal-champagne",
+      "name": "Royal Champagne Marble",
+      "category": "Milestone",
+      "imageUrl": "/src/assets/images/template_royal_champagne_1795418312549.jpg",
+      "sizeBytes": 0,
+      "active": true,
+      "updatedAt": "2026-11-23T09:12:27.783Z"
+    },
+    {
+      "id": "bg-coastal-sunset",
+      "name": "Mediterranean Sunset Terrace",
+      "category": "Editorial",
+      "imageUrl": "/src/assets/images/template_coastal_sunset_1795418299674.jpg",
+      "sizeBytes": 0,
+      "active": true,
+      "updatedAt": "2026-11-23T09:12:27.783Z"
+    },
+    {
+      "id": "bg-sakura-blossom",
+      "name": "Sakura Blossom Tea Table",
+      "category": "Nostalgic",
+      "imageUrl": "/src/assets/images/template_sakura_blossom_1795418306311.jpg",
+      "sizeBytes": 0,
+      "active": true,
+      "updatedAt": "2026-11-23T09:12:27.783Z"
+    },
+    {
+      "id": "bg-afterhours-disco",
+      "name": "Mirrored Disco Reflections",
+      "category": "Evening",
+      "imageUrl": "/src/assets/images/template_afterhours_disco_1795418305440.jpg",
+      "sizeBytes": 0,
+      "active": true,
+      "updatedAt": "2026-11-23T09:12:27.783Z"
     }
   ],
   "reports": [],
@@ -310,13 +490,16 @@
     "tagline": "Bespoke birthday pages built in minutes—no account, no login, just a shareable link.",
     "heroHeadline": "Craft a memorable birthday website without creating an account.",
     "footerNote": "Birthday Magic · Public no-login birthday studio with private edit-key protection.",
-    "maxImageSizeMb": 5,
+    "maxImageSizeMb": 8,
     "maxAudioSizeMb": 12,
     "maxPhotosPerProject": 8,
     "projectExpirationDays": 90,
     "rateLimitPerHour": 30,
     "allowPublicPublishing": true,
-    "updatedAt": "2026-11-23T05:42:55.663Z"
+    "updatedAt": "2026-11-23T05:42:55.663Z",
+    "announcementEnabled": false,
+    "announcementText": "",
+    "maintenanceMode": false
   },
   "dailyStats": {
     "2026-11-17": {
@@ -344,9 +527,111 @@
       "visits": 18
     },
     "2026-11-23": {
-      "projectsCreated": 1,
-      "visits": 12
+      "projectsCreated": 2,
+      "visits": 18
     }
   },
-  "adminSessions": {}
+  "adminSessions": {
+    "fZiHIUsOu0Wmk8ZhFpwDKHlc13HFUm7c": {
+      "id": "fZiHIUsOu0Wmk8ZhFpwDKHlc13HFUm7c",
+      "username": "@riaj2007",
+      "createdAt": 1795425295852,
+      "expiresAt": 1795454095852
+    },
+    "t5fS7eEzdinpGZ4JCsXJSI8XScXPpKXY": {
+      "id": "t5fS7eEzdinpGZ4JCsXJSI8XScXPpKXY",
+      "username": "@riaj2007",
+      "createdAt": 1795426650566,
+      "expiresAt": 1795455450566
+    },
+    "CGkeg5DF8koo4_XrVvpgnncsTQUKgrlf": {
+      "id": "CGkeg5DF8koo4_XrVvpgnncsTQUKgrlf",
+      "username": "@riaj2007",
+      "createdAt": 1795426702840,
+      "expiresAt": 1795455502840
+    }
+  },
+  "auditLogs": [
+    {
+      "id": "aud_wZamHd0-",
+      "actor": "@riaj2007",
+      "action": "media.delete",
+      "target": "/uploads/photos/1795425295465-qvIlFnF5.png",
+      "details": "Deleted uploaded file (70 bytes)",
+      "createdAt": "2026-11-23T09:38:22.984Z"
+    },
+    {
+      "id": "aud_hi4TlYxM",
+      "actor": "@riaj2007",
+      "action": "media.delete",
+      "target": "/uploads/photos/1795425295608-YCJ7uiMe.png",
+      "details": "Deleted uploaded file (70 bytes)",
+      "createdAt": "2026-11-23T09:38:22.959Z"
+    },
+    {
+      "id": "aud_Mzn5lD3q",
+      "actor": "@riaj2007",
+      "action": "media.delete",
+      "target": "/uploads/photos/1795426650175-cJrAshi3.png",
+      "details": "Deleted uploaded file (70 bytes)",
+      "createdAt": "2026-11-23T09:38:22.939Z"
+    },
+    {
+      "id": "aud_XvKzJFYe",
+      "actor": "@riaj2007",
+      "action": "media.delete",
+      "target": "/uploads/photos/1795426650319-boemrV5v.png",
+      "details": "Deleted uploaded file (70 bytes)",
+      "createdAt": "2026-11-23T09:38:22.920Z"
+    },
+    {
+      "id": "aud_u4MvQ758",
+      "actor": "@riaj2007",
+      "action": "admin.login",
+      "target": "session",
+      "details": "Signed in from 127.0.0.1",
+      "createdAt": "2026-11-23T09:38:22.840Z"
+    },
+    {
+      "id": "aud_m3Ao3ZbZ",
+      "actor": "@riaj2007",
+      "action": "storage.cleanup",
+      "target": "uploads",
+      "details": "Purged 0 expired projects, 0 orphan files",
+      "createdAt": "2026-11-23T09:37:30.865Z"
+    },
+    {
+      "id": "aud_RghK4E5y",
+      "actor": "@riaj2007",
+      "action": "admin.export",
+      "target": "backup",
+      "details": "Exported sanitized platform backup JSON",
+      "createdAt": "2026-11-23T09:37:30.795Z"
+    },
+    {
+      "id": "aud_7Tq0Z876",
+      "actor": "@riaj2007",
+      "action": "security.reset_rate_limits",
+      "target": "rate-limiter",
+      "details": "Cleared 2 active IP buckets",
+      "createdAt": "2026-11-23T09:37:30.731Z"
+    },
+    {
+      "id": "aud_19J6TEO5",
+      "actor": "@riaj2007",
+      "action": "admin.login",
+      "target": "session",
+      "details": "Signed in from 127.0.0.1",
+      "createdAt": "2026-11-23T09:37:30.566Z"
+    },
+    {
+      "id": "aud_CiNYevAD",
+      "actor": "@riaj2007",
+      "action": "admin.login",
+      "target": "session",
+      "details": "Signed in from 127.0.0.1",
+      "createdAt": "2026-11-23T09:14:55.853Z"
+    }
+  ],
+  "seedVersion": 2
 }

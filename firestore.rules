@@ -99,7 +99,7 @@ service cloud.firestore {
         && data.keys().hasOnly(['id', 'name', 'effectType', 'intensity', 'description', 'active', 'updatedAt'])
         && isValidId(data.id)
         && data.name is string && data.name.size() >= 1 && data.name.size() <= 80
-        && data.effectType is string && data.effectType in ['confetti', 'fireworks', 'embers', 'petals', 'starlight']
+        && data.effectType is string && data.effectType in ['confetti', 'fireworks', 'embers', 'petals', 'starlight', 'balloons', 'butterflies', 'hearts', 'ribbons', 'snowsparkle']
         && data.intensity is string && data.intensity in ['gentle', 'balanced', 'festive']
         && isValidOptionalString(data, 'description', 240)
         && data.active is bool

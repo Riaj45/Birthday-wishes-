@@ -198,7 +198,7 @@
         },
         "effectType": {
           "type": "string",
-          "enum": ["confetti", "fireworks", "embers", "petals", "starlight"]
+          "enum": ["confetti", "fireworks", "embers", "petals", "starlight", "balloons", "butterflies", "hearts", "ribbons", "snowsparkle"]
         },
         "intensity": {
           "type": "string",

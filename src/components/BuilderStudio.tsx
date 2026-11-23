@@ -1,4 +1,6 @@
 import {
+  ArrowDown,
+  ArrowUp,
   Check,
   Copy,
   Download,
@@ -123,6 +125,9 @@ export const BuilderStudio: React.FC<BuilderStudioProps> = ({
   const [auditionTrackId, setAuditionTrackId] = useState<string | null>(null);
 
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<string | null>(null);
+  const [uploadingCover, setUploadingCover] = useState(false);
+  const [isDraggingPhoto, setIsDraggingPhoto] = useState(false);
   const [saving, setSaving] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -139,6 +144,7 @@ export const BuilderStudio: React.FC<BuilderStudioProps> = ({
   const [newWishText, setNewWishText] = useState('');
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const coverInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     if (editingProject) {
@@ -187,7 +193,7 @@ export const BuilderStudio: React.FC<BuilderStudioProps> = ({
     }));
   };
 
-  const handlePhotoUpload = async (files: FileList | null) => {
+  const handlePhotoUpload = async (files: FileList | File[] | null) => {
     if (!files || files.length === 0) return;
     const maxPhotos = catalog.settings.maxPhotosPerProject;
     if (draft.photos.length >= maxPhotos) {
@@ -196,17 +202,19 @@ export const BuilderStudio: React.FC<BuilderStudioProps> = ({
     }
 
     setErrorMessage(null);
+    setStatusMessage(null);
     setUploadingPhoto(true);
     try {
       const remainingSlots = maxPhotos - draft.photos.length;
       const toUpload = Array.from(files).slice(0, remainingSlots);
       const uploaded: BirthdayPhoto[] = [];
+      let optimizedCount = 0;
 
-      for (const file of toUpload) {
-        if (file.size > catalog.settings.maxImageSizeMb * 1024 * 1024) {
-          throw new Error(`"${file.name}" exceeds the ${catalog.settings.maxImageSizeMb} MB image upload limit.`);
-        }
-        const res = await uploadPublicPhoto(file, savedProjectId || 'new');
+      for (let i = 0; i < toUpload.length; i++) {
+        const file = toUpload[i];
+        setUploadProgress(`Uploading ${i + 1} of ${toUpload.length}...`);
+        const res = await uploadPublicPhoto(file, catalog.settings.maxImageSizeMb);
+        if (res.optimized) optimizedCount += 1;
         uploaded.push({
           id: `ph_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
           url: res.url,
@@ -220,13 +228,47 @@ export const BuilderStudio: React.FC<BuilderStudioProps> = ({
         ...prev,
         photos: [...prev.photos, ...uploaded],
       }));
-      setStatusMessage(`${uploaded.length} ${uploaded.length === 1 ? 'photo' : 'photos'} uploaded.`);
+      const optNote = optimizedCount > 0 ? ' (auto-optimized for fast loading)' : '';
+      setStatusMessage(`${uploaded.length} ${uploaded.length === 1 ? 'photo' : 'photos'} uploaded${optNote}.`);
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : 'Photo upload failed.');
     } finally {
       setUploadingPhoto(false);
+      setUploadProgress(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
+  };
+
+  const handleCoverPhotoUpload = async (file: File | null | undefined) => {
+    if (!file) return;
+    setErrorMessage(null);
+    setStatusMessage(null);
+    setUploadingCover(true);
+    try {
+      const res = await uploadPublicPhoto(file, catalog.settings.maxImageSizeMb);
+      setDraft((prev) => ({
+        ...prev,
+        backgroundId: 'custom-upload',
+        backgroundUrl: res.url,
+      }));
+      setStatusMessage('Custom cover photo uploaded and applied to hero backdrop.');
+    } catch (err) {
+      setErrorMessage(err instanceof Error ? err.message : 'Cover photo upload failed.');
+    } finally {
+      setUploadingCover(false);
+      if (coverInputRef.current) coverInputRef.current.value = '';
+    }
+  };
+
+  const movePhoto = (index: number, direction: -1 | 1) => {
+    setDraft((prev) => {
+      const target = index + direction;
+      if (target < 0 || target >= prev.photos.length) return prev;
+      const next = [...prev.photos];
+      const [item] = next.splice(index, 1);
+      next.splice(target, 0, item);
+      return { ...prev, photos: next };
+    });
   };
 
   const handleAddWish = (e: React.FormEvent) => {
@@ -669,7 +711,25 @@ export const BuilderStudio: React.FC<BuilderStudioProps> = ({
                 </div>
 
                 <div>
-                  <p className="text-xs font-medium text-zinc-700 mb-2.5">Cover Backdrop</p>
+                  <div className="flex items-center justify-between gap-2 mb-2.5">
+                    <p className="text-xs font-medium text-zinc-700">Cover Backdrop</p>
+                    <input
+                      ref={coverInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => void handleCoverPhotoUpload(e.target.files?.[0])}
+                      className="hidden"
+                    />
+                    <button
+                      type="button"
+                      disabled={uploadingCover}
+                      onClick={() => coverInputRef.current?.click()}
+                      className="inline-flex items-center gap-1 text-xs font-medium text-rose-600 hover:text-rose-700 disabled:opacity-50 cursor-pointer"
+                    >
+                      <Upload className="w-3 h-3" />
+                      {uploadingCover ? 'Uploading...' : 'Upload Custom Cover'}
+                    </button>
+                  </div>
                   <div className="grid grid-cols-3 gap-2.5">
                     {catalog.backgrounds.map((bg) => {
                       const active = draft.backgroundUrl === bg.imageUrl;
@@ -736,19 +796,37 @@ export const BuilderStudio: React.FC<BuilderStudioProps> = ({
             {/* TAB 3: PHOTOS */}
             {activeTab === 'photos' && (
               <div className="space-y-5">
-                <div className="rounded-xl border border-dashed border-stone-300 bg-[#FAF9F7] p-6 text-center">
+                <div
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setIsDraggingPhoto(true);
+                  }}
+                  onDragLeave={() => setIsDraggingPhoto(false)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setIsDraggingPhoto(false);
+                    void handlePhotoUpload(e.dataTransfer.files);
+                  }}
+                  className={`rounded-xl border border-dashed p-6 text-center transition-colors ${
+                    isDraggingPhoto
+                      ? 'border-rose-600 bg-rose-50/50'
+                      : 'border-stone-300 bg-[#FAF9F7]'
+                  }`}
+                >
                   <Upload className="w-6 h-6 text-zinc-500 mx-auto mb-2" />
-                  <p className="text-sm font-medium text-zinc-900 mb-1">Upload birthday photos</p>
+                  <p className="text-sm font-medium text-zinc-900 mb-1">
+                    {isDraggingPhoto ? 'Drop photos to upload' : 'Drop photos here or browse'}
+                  </p>
                   <p className="text-xs text-zinc-500 mb-4">
-                    JPEG, PNG, WEBP, or GIF · Max {catalog.settings.maxImageSizeMb} MB each · Up to{' '}
+                    JPG, PNG, WEBP, AVIF, or GIF · Large phone photos auto-optimized · Up to{' '}
                     {catalog.settings.maxPhotosPerProject} photos
                   </p>
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    accept="image/*"
                     multiple
-                    onChange={(e) => handlePhotoUpload(e.target.files)}
+                    onChange={(e) => void handlePhotoUpload(e.target.files)}
                     className="hidden"
                   />
                   <button
@@ -757,7 +835,7 @@ export const BuilderStudio: React.FC<BuilderStudioProps> = ({
                     onClick={() => fileInputRef.current?.click()}
                     className="px-4 py-2 rounded-lg bg-zinc-900 text-white text-xs font-semibold hover:bg-zinc-800 disabled:opacity-50 cursor-pointer"
                   >
-                    {uploadingPhoto ? 'Uploading...' : 'Select Photos'}
+                    {uploadingPhoto ? uploadProgress || 'Uploading...' : 'Select Photos'}
                   </button>
                 </div>
 
@@ -795,10 +873,46 @@ export const BuilderStudio: React.FC<BuilderStudioProps> = ({
                             placeholder="Write a photo caption..."
                             className="w-full rounded-md border border-stone-300 bg-white px-2.5 py-1.5 text-xs text-zinc-900 focus:outline-none focus:border-rose-600"
                           />
-                          <p className="text-[11px] text-zinc-400 mt-1">
-                            Photo {idx + 1}
-                            {photo.sizeBytes ? ` · ${(photo.sizeBytes / 1024).toFixed(0)} KB` : ''}
-                          </p>
+                          <div className="flex flex-wrap items-center justify-between gap-2 mt-1.5">
+                            <p className="text-[11px] text-zinc-400 tabular-nums">
+                              Photo {idx + 1}
+                              {photo.sizeBytes ? ` · ${(photo.sizeBytes / 1024).toFixed(0)} KB` : ''}
+                            </p>
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setDraft((prev) => ({
+                                    ...prev,
+                                    backgroundId: 'custom-photo',
+                                    backgroundUrl: photo.url,
+                                  }));
+                                  setStatusMessage(`Photo ${idx + 1} set as hero cover backdrop.`);
+                                }}
+                                className="text-[11px] text-zinc-600 hover:text-zinc-900 underline underline-offset-2 cursor-pointer"
+                              >
+                                Use as Cover
+                              </button>
+                              <button
+                                type="button"
+                                disabled={idx === 0}
+                                onClick={() => movePhoto(idx, -1)}
+                                aria-label="Move photo up"
+                                className="p-0.5 text-zinc-500 hover:text-zinc-900 disabled:opacity-30 cursor-pointer"
+                              >
+                                <ArrowUp className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                disabled={idx === draft.photos.length - 1}
+                                onClick={() => movePhoto(idx, 1)}
+                                aria-label="Move photo down"
+                                className="p-0.5 text-zinc-500 hover:text-zinc-900 disabled:opacity-30 cursor-pointer"
+                              >
+                                <ArrowDown className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
                         </div>
                         <button
                           type="button"
@@ -896,14 +1010,16 @@ export const BuilderStudio: React.FC<BuilderStudioProps> = ({
               <div className="space-y-6">
                 <div>
                   <div className="flex items-center justify-between mb-2.5">
-                    <p className="text-xs font-medium text-zinc-700">Animation Preset</p>
+                    <p className="text-xs font-medium text-zinc-700">
+                      2D Greeting Card Animation ({catalog.animationPresets.length})
+                    </p>
                     <button
                       type="button"
                       onClick={() => setTriggerSignal((n) => n + 1)}
                       className="inline-flex items-center gap-1 text-xs font-medium text-rose-600 hover:text-rose-700 cursor-pointer"
                     >
                       <Sparkles className="w-3.5 h-3.5" />
-                      Test Effect
+                      Test 2D Effect
                     </button>
                   </div>
                   <div className="space-y-2">

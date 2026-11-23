@@ -7,12 +7,14 @@ import multer from 'multer';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import type {
+  AdminAuditLog,
   AnimationPreset,
   BackgroundAsset,
   BirthdayProject,
   BirthdayTemplate,
   ContentReport,
   DailyMetricPoint,
+  MediaFileEntry,
   MusicTrack,
   ProjectStatus,
   SiteSettings,
@@ -56,6 +58,7 @@ interface AdminSessionRecord {
 }
 
 interface PersistedStore {
+  seedVersion?: number;
   projects: StoredProject[];
   templates: BirthdayTemplate[];
   animationPresets: AnimationPreset[];
@@ -65,6 +68,8 @@ interface PersistedStore {
   settings: SiteSettings;
   dailyStats: Record<string, { projectsCreated: number; visits: number }>;
   adminSessions: Record<string, AdminSessionRecord>;
+  auditLogs?: AdminAuditLog[];
+  adminPasswordHashOverride?: string;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -84,7 +89,11 @@ function safeEqualHex(a: string, b: string): boolean {
 function verifyAdminCredentials(username: string, password: string): boolean {
   const userMatch = safeEqualHex(sha256Hex(username.trim()), sha256Hex(ADMIN_USERNAME));
   const candidateDerived = crypto.scryptSync(password, PASSWORD_SALT, 64);
-  const passMatch = crypto.timingSafeEqual(candidateDerived, ADMIN_PASSWORD_DERIVED);
+  const expectedBuf = store?.adminPasswordHashOverride
+    ? Buffer.from(store.adminPasswordHashOverride, 'hex')
+    : ADMIN_PASSWORD_DERIVED;
+  const passMatch =
+    expectedBuf.length === candidateDerived.length && crypto.timingSafeEqual(candidateDerived, expectedBuf);
   return userMatch && passMatch;
 }
 
@@ -193,6 +202,62 @@ function createInitialStore(): PersistedStore {
       active: true,
       updatedAt: now,
     },
+    {
+      id: 'royal-champagne',
+      name: 'Royal Champagne Toast',
+      category: 'Milestone',
+      description: 'Crystal coupe glasses, warm chandelier bokeh on espresso marble, and effervescent gold bubbles.',
+      previewImage: '/src/assets/images/template_royal_champagne_1795418312549.jpg',
+      themeMode: 'dark',
+      accentColor: '#D97706',
+      fontStyle: 'classic',
+      defaultAnimationId: 'champagne-bubbles',
+      defaultMusicId: 'candlelight-music-box',
+      active: true,
+      updatedAt: now,
+    },
+    {
+      id: 'coastal-sunset',
+      name: 'Coastal Sunset Breeze',
+      category: 'Editorial',
+      description: 'Sun-drenched Mediterranean linen terrace overlooking a golden horizon with fluttering butterflies.',
+      previewImage: '/src/assets/images/template_coastal_sunset_1795418299674.jpg',
+      themeMode: 'light',
+      accentColor: '#EA580C',
+      fontStyle: 'editorial',
+      defaultAnimationId: 'golden-butterflies',
+      defaultMusicId: 'golden-hour-waltz',
+      active: true,
+      updatedAt: now,
+    },
+    {
+      id: 'sakura-springtime',
+      name: 'Sakura Springtime',
+      category: 'Nostalgic',
+      description: 'Soft cherry blossom branches, handmade cotton stationery, and floating paper hearts.',
+      previewImage: '/src/assets/images/template_sakura_blossom_1795418306311.jpg',
+      themeMode: 'light',
+      accentColor: '#DB2777',
+      fontStyle: 'editorial',
+      defaultAnimationId: 'paper-hearts',
+      defaultMusicId: 'candlelight-music-box',
+      active: true,
+      updatedAt: now,
+    },
+    {
+      id: 'afterhours-disco',
+      name: 'After-Hours Disco Lounge',
+      category: 'Evening',
+      description: 'Mirrored rose-gold disco light reflections across charcoal stone with festive streamer ribbons.',
+      previewImage: '/src/assets/images/template_afterhours_disco_1795418305440.jpg',
+      themeMode: 'dark',
+      accentColor: '#E11D48',
+      fontStyle: 'modern',
+      defaultAnimationId: 'festive-ribbons',
+      defaultMusicId: 'happy-birthday-chimes',
+      active: true,
+      updatedAt: now,
+    },
   ];
 
   const animationPresets: AnimationPreset[] = [
@@ -201,7 +266,7 @@ function createInitialStore(): PersistedStore {
       name: 'Golden Confetti Shower',
       effectType: 'confetti',
       intensity: 'balanced',
-      description: 'Warm rose, champagne gold, and ivory confetti bursts on reveal and candle blow-out.',
+      description: 'Tumbling 2D metallic foil confetti and celebratory bursts on reveal and candle blow-out.',
       active: true,
       updatedAt: now,
     },
@@ -210,7 +275,7 @@ function createInitialStore(): PersistedStore {
       name: 'Midnight Fireworks',
       effectType: 'fireworks',
       intensity: 'festive',
-      description: 'Celebratory high-altitude firework volleys across the celebration sky.',
+      description: '2D celebratory radial spark volleys illuminating the greeting card sky.',
       active: true,
       updatedAt: now,
     },
@@ -219,7 +284,7 @@ function createInitialStore(): PersistedStore {
       name: 'Candlelight Embers',
       effectType: 'embers',
       intensity: 'gentle',
-      description: 'Soft glowing golden light motes drifting upward like warm candlelight.',
+      description: 'Warm glowing golden bokeh embers drifting gently upward like candlelight.',
       active: true,
       updatedAt: now,
     },
@@ -228,7 +293,7 @@ function createInitialStore(): PersistedStore {
       name: 'Botanical Petal Drift',
       effectType: 'petals',
       intensity: 'gentle',
-      description: 'Delicate fluttering blossom petals floating gently down the invitation.',
+      description: 'Delicate fluttering blossom petals swaying across the invitation.',
       active: true,
       updatedAt: now,
     },
@@ -237,7 +302,52 @@ function createInitialStore(): PersistedStore {
       name: 'Starlight Constellation',
       effectType: 'starlight',
       intensity: 'balanced',
-      description: 'Subtle twinkling starlight sparkles shimmering behind the greeting.',
+      description: 'Twinkling four-point stars shimmering behind your birthday greeting.',
+      active: true,
+      updatedAt: now,
+    },
+    {
+      id: 'silk-balloons',
+      name: 'Silk Balloon Parade',
+      effectType: 'balloons',
+      intensity: 'balanced',
+      description: '2D matte silk balloons with curved strings floating gently upward across the card.',
+      active: true,
+      updatedAt: now,
+    },
+    {
+      id: 'golden-butterflies',
+      name: 'Golden Butterflies',
+      effectType: 'butterflies',
+      intensity: 'gentle',
+      description: 'Animated 2D wing-flapping butterflies gliding smoothly across your greeting card.',
+      active: true,
+      updatedAt: now,
+    },
+    {
+      id: 'paper-hearts',
+      name: 'Floating Paper Hearts',
+      effectType: 'hearts',
+      intensity: 'gentle',
+      description: 'Layered 2D origami hearts drifting upward with warm celebratory sway.',
+      active: true,
+      updatedAt: now,
+    },
+    {
+      id: 'festive-ribbons',
+      name: 'Festive Streamer Ribbons',
+      effectType: 'ribbons',
+      intensity: 'festive',
+      description: 'Curling 2D celebratory party streamers cascading smoothly down the card.',
+      active: true,
+      updatedAt: now,
+    },
+    {
+      id: 'champagne-bubbles',
+      name: 'Champagne Shimmer',
+      effectType: 'snowsparkle',
+      intensity: 'balanced',
+      description: 'Effervescent golden champagne bubbles rising and glistening softly.',
       active: true,
       updatedAt: now,
     },
@@ -332,6 +442,42 @@ function createInitialStore(): PersistedStore {
       name: 'Beeswax Candles & Roses',
       category: 'Editorial',
       imageUrl: '/src/assets/images/hero_birthday_editorial_1795407298468.jpg',
+      sizeBytes: 0,
+      active: true,
+      updatedAt: now,
+    },
+    {
+      id: 'bg-royal-champagne',
+      name: 'Royal Champagne Marble',
+      category: 'Milestone',
+      imageUrl: '/src/assets/images/template_royal_champagne_1795418312549.jpg',
+      sizeBytes: 0,
+      active: true,
+      updatedAt: now,
+    },
+    {
+      id: 'bg-coastal-sunset',
+      name: 'Mediterranean Sunset Terrace',
+      category: 'Editorial',
+      imageUrl: '/src/assets/images/template_coastal_sunset_1795418299674.jpg',
+      sizeBytes: 0,
+      active: true,
+      updatedAt: now,
+    },
+    {
+      id: 'bg-sakura-blossom',
+      name: 'Sakura Blossom Tea Table',
+      category: 'Nostalgic',
+      imageUrl: '/src/assets/images/template_sakura_blossom_1795418306311.jpg',
+      sizeBytes: 0,
+      active: true,
+      updatedAt: now,
+    },
+    {
+      id: 'bg-afterhours-disco',
+      name: 'Mirrored Disco Reflections',
+      category: 'Evening',
+      imageUrl: '/src/assets/images/template_afterhours_disco_1795418305440.jpg',
       sizeBytes: 0,
       active: true,
       updatedAt: now,
@@ -453,9 +599,12 @@ function createInitialStore(): PersistedStore {
     tagline: 'Bespoke birthday pages built in minutes—no account, no login, just a shareable link.',
     heroHeadline: 'Craft a memorable birthday website without creating an account.',
     footerNote: 'Birthday Magic · Public no-login birthday studio with private edit-key protection.',
-    maxImageSizeMb: 5,
+    announcementEnabled: false,
+    announcementText: '',
+    maintenanceMode: false,
+    maxImageSizeMb: 8,
     maxAudioSizeMb: 12,
-    maxPhotosPerProject: 8,
+    maxPhotosPerProject: 10,
     projectExpirationDays: 90,
     rateLimitPerHour: 30,
     allowPublicPublishing: true,
@@ -463,6 +612,7 @@ function createInitialStore(): PersistedStore {
   };
 
   return {
+    seedVersion: 2,
     projects: sampleProjects,
     templates,
     animationPresets,
@@ -480,7 +630,53 @@ function createInitialStore(): PersistedStore {
       [dayOffsetKey(0)]: { projectsCreated: 1, visits: 12 },
     },
     adminSessions: {},
+    auditLogs: [],
   };
+}
+
+function migrateStoreIfNeeded(parsed: PersistedStore): PersistedStore {
+  const defaults = createInitialStore();
+  let changed = false;
+
+  if (!Array.isArray(parsed.auditLogs)) {
+    parsed.auditLogs = [];
+    changed = true;
+  }
+
+  if ((parsed.seedVersion || 1) < 2) {
+    for (const tpl of defaults.templates) {
+      if (!parsed.templates.some((existing) => existing.id === tpl.id)) {
+        parsed.templates.push(tpl);
+      }
+    }
+    for (const anim of defaults.animationPresets) {
+      if (!parsed.animationPresets.some((existing) => existing.id === anim.id)) {
+        parsed.animationPresets.push(anim);
+      }
+    }
+    for (const bg of defaults.backgrounds) {
+      if (!parsed.backgrounds.some((existing) => existing.id === bg.id)) {
+        parsed.backgrounds.push(bg);
+      }
+    }
+    if (parsed.settings.maxImageSizeMb < 8) {
+      parsed.settings.maxImageSizeMb = 8;
+    }
+    if (parsed.settings.announcementEnabled === undefined) {
+      parsed.settings.announcementEnabled = false;
+      parsed.settings.announcementText = '';
+    }
+    if (parsed.settings.maintenanceMode === undefined) {
+      parsed.settings.maintenanceMode = false;
+    }
+    parsed.seedVersion = 2;
+    changed = true;
+  }
+
+  if (changed) {
+    saveStore(parsed);
+  }
+  return parsed;
 }
 
 function loadStore(): PersistedStore {
@@ -489,7 +685,7 @@ function loadStore(): PersistedStore {
       const raw = fs.readFileSync(STORE_PATH, 'utf8');
       const parsed = JSON.parse(raw) as PersistedStore;
       if (parsed && Array.isArray(parsed.projects) && Array.isArray(parsed.templates)) {
-        return parsed;
+        return migrateStoreIfNeeded(parsed);
       }
     }
   } catch (err) {
@@ -509,6 +705,21 @@ function saveStore(store: PersistedStore): void {
 }
 
 const store = loadStore();
+
+function recordAudit(actor: string, action: string, target: string, details = ''): void {
+  if (!Array.isArray(store.auditLogs)) store.auditLogs = [];
+  store.auditLogs.unshift({
+    id: `aud_${generateSecureId(6)}`,
+    actor,
+    action,
+    target,
+    details,
+    createdAt: new Date().toISOString(),
+  });
+  if (store.auditLogs.length > 300) {
+    store.auditLogs.length = 300;
+  }
+}
 
 // ─── Storage Usage & Cleanup Policy ──────────────────────────────────────────
 function safeUnlinkUploadUrl(url: string | undefined): number {
@@ -697,27 +908,61 @@ function requireAdmin(req: Request, res: Response, next: NextFunction): void {
 }
 
 // ─── Multer Upload Helpers (Dynamic Size & MIME Validation) ───────────────────
-const ALLOWED_IMAGE_MIMES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
-const ALLOWED_AUDIO_MIMES = new Set(['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/ogg', 'audio/mp4', 'audio/x-m4a']);
+const ALLOWED_IMAGE_MIMES = new Set([
+  'image/jpeg',
+  'image/jpg',
+  'image/pjpeg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+  'image/avif',
+]);
+const ALLOWED_IMAGE_EXTS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.gif', '.avif']);
+const ALLOWED_AUDIO_MIMES = new Set([
+  'audio/mpeg',
+  'audio/mp3',
+  'audio/wav',
+  'audio/x-wav',
+  'audio/ogg',
+  'audio/mp4',
+  'audio/x-m4a',
+  'audio/aac',
+]);
+const ALLOWED_AUDIO_EXTS = new Set(['.mp3', '.wav', '.ogg', '.m4a', '.aac']);
 
 function makeUploader(subdir: (typeof UPLOAD_SUBDIRS)[number], kind: 'image' | 'audio') {
   return (req: Request, res: Response, next: NextFunction) => {
+    const destDir = path.join(UPLOADS_DIR, subdir);
+    if (!fs.existsSync(destDir)) {
+      fs.mkdirSync(destDir, { recursive: true });
+    }
     const maxMb = kind === 'image' ? store.settings.maxImageSizeMb : store.settings.maxAudioSizeMb;
     const maxBytes = Math.max(1, maxMb) * 1024 * 1024;
     const allowedMimes = kind === 'image' ? ALLOWED_IMAGE_MIMES : ALLOWED_AUDIO_MIMES;
+    const allowedExts = kind === 'image' ? ALLOWED_IMAGE_EXTS : ALLOWED_AUDIO_EXTS;
 
     const upload = multer({
       storage: multer.diskStorage({
-        destination: (_r, _f, cb) => cb(null, path.join(UPLOADS_DIR, subdir)),
+        destination: (_r, _f, cb) => cb(null, destDir),
         filename: (_r, file, cb) => {
-          const ext = path.extname(file.originalname).toLowerCase().replace(/[^.a-z0-9]/g, '') || (kind === 'image' ? '.jpg' : '.mp3');
+          const rawExt = path.extname(file.originalname).toLowerCase().replace(/[^.a-z0-9]/g, '');
+          const ext = allowedExts.has(rawExt) ? rawExt : kind === 'image' ? '.jpg' : '.mp3';
           cb(null, `${Date.now()}-${generateSecureId(6)}${ext}`);
         },
       }),
       limits: { fileSize: maxBytes, files: 1 },
       fileFilter: (_r, file, cb) => {
-        if (!allowedMimes.has(file.mimetype)) {
-          cb(new Error(kind === 'image' ? 'Only JPEG, PNG, WEBP, or GIF images are allowed.' : 'Only MP3, WAV, OGG, or M4A audio files are allowed.'));
+        const mime = (file.mimetype || '').toLowerCase();
+        const ext = path.extname(file.originalname || '').toLowerCase();
+        const valid = allowedMimes.has(mime) || (allowedExts.has(ext) && (mime === '' || mime === 'application/octet-stream'));
+        if (!valid) {
+          cb(
+            new Error(
+              kind === 'image'
+                ? 'Unsupported image format. Please use JPEG, PNG, WEBP, GIF, or AVIF.'
+                : 'Unsupported audio format. Please use MP3, WAV, OGG, or M4A.'
+            )
+          );
           return;
         }
         cb(null, true);
@@ -726,11 +971,12 @@ function makeUploader(subdir: (typeof UPLOAD_SUBDIRS)[number], kind: 'image' | '
 
     upload(req, res, (err: unknown) => {
       if (err) {
-        const msg = err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE'
-          ? `File exceeds the maximum allowed size of ${maxMb} MB.`
-          : err instanceof Error
-            ? err.message
-            : 'Upload failed.';
+        const msg =
+          err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE'
+            ? `File exceeds the maximum allowed size of ${maxMb} MB.`
+            : err instanceof Error
+              ? err.message
+              : 'Upload failed.';
         res.status(400).json({ error: msg });
         return;
       }
@@ -794,7 +1040,7 @@ function recordDailyStat(kind: 'projectsCreated' | 'visits') {
 async function startServer() {
   const app = express();
   app.set('trust proxy', 1);
-  app.use(express.json({ limit: '2mb' }));
+  app.use(express.json({ limit: '10mb' }));
   app.use(cookieParser());
 
   // Safe static serving for uploaded media
@@ -824,7 +1070,7 @@ async function startServer() {
     '/api/upload/photo',
     (req, res, next) => {
       const ip = getClientIp(req);
-      const limit = checkRateLimit(`upload:${ip}`, Math.max(10, store.settings.rateLimitPerHour * 2), 60 * 60 * 1000);
+      const limit = checkRateLimit(`upload:${ip}`, Math.max(20, store.settings.rateLimitPerHour * 3), 60 * 60 * 1000);
       if (!limit.allowed) {
         res.status(429).json({ error: `Upload rate limit reached. Try again in ${limit.retryAfterSec}s.` });
         return;
@@ -844,6 +1090,46 @@ async function startServer() {
       });
     }
   );
+
+  // Fallback JSON Base64 Image Upload (helps if proxies strip multipart boundaries)
+  app.post('/api/upload/photo-data', (req, res) => {
+    const ip = getClientIp(req);
+    const limit = checkRateLimit(`upload:${ip}`, Math.max(20, store.settings.rateLimitPerHour * 3), 60 * 60 * 1000);
+    if (!limit.allowed) {
+      res.status(429).json({ error: `Upload rate limit reached. Try again in ${limit.retryAfterSec}s.` });
+      return;
+    }
+    const dataUrl = typeof req.body?.dataUrl === 'string' ? req.body.dataUrl : '';
+    const match = dataUrl.match(/^data:(image\/(?:jpeg|jpg|png|webp|gif|avif));base64,([A-Za-z0-9+/=]+)$/);
+    if (!match) {
+      res.status(400).json({ error: 'Invalid image data payload.' });
+      return;
+    }
+    const mime = match[1].toLowerCase();
+    const buf = Buffer.from(match[2], 'base64');
+    const maxBytes = Math.max(1, store.settings.maxImageSizeMb) * 1024 * 1024;
+    if (buf.length > maxBytes) {
+      res.status(400).json({ error: `File exceeds maximum allowed size of ${store.settings.maxImageSizeMb} MB.` });
+      return;
+    }
+    const extMap: Record<string, string> = {
+      'image/jpeg': '.jpg',
+      'image/jpg': '.jpg',
+      'image/png': '.png',
+      'image/webp': '.webp',
+      'image/gif': '.gif',
+      'image/avif': '.avif',
+    };
+    const destDir = path.join(UPLOADS_DIR, 'photos');
+    if (!fs.existsSync(destDir)) fs.mkdirSync(destDir, { recursive: true });
+    const filename = `${Date.now()}-${generateSecureId(6)}${extMap[mime] || '.jpg'}`;
+    fs.writeFileSync(path.join(destDir, filename), buf);
+    res.status(201).json({
+      url: `/uploads/photos/${filename}`,
+      sizeBytes: buf.length,
+      mimeType: mime,
+    });
+  });
 
   // ── Public Project Creation (No Login, Generates Private Edit Token) ────────
   app.post('/api/projects', (req, res) => {
@@ -1174,6 +1460,7 @@ async function startServer() {
       createdAt: now,
       expiresAt,
     };
+    recordAudit(ADMIN_USERNAME, 'admin.login', 'session', `Signed in from ${ip}`);
     saveStore(store);
 
     res.cookie(SESSION_COOKIE_NAME, signSessionId(sessionId), {
@@ -1195,7 +1482,9 @@ async function startServer() {
     const rawCookie = req.cookies?.[SESSION_COOKIE_NAME] as string | undefined;
     const sessionId = verifySignedSession(rawCookie);
     if (sessionId && store.adminSessions[sessionId]) {
+      const actor = store.adminSessions[sessionId].username;
       delete store.adminSessions[sessionId];
+      recordAudit(actor, 'admin.logout', 'session', 'Signed out cleanly');
       saveStore(store);
     }
     res.clearCookie(SESSION_COOKIE_NAME, { path: '/' });
@@ -1281,8 +1570,82 @@ async function startServer() {
     }
     project.status = status;
     project.updatedAt = new Date().toISOString();
+    recordAudit(ADMIN_USERNAME, 'project.status', project.id, `Changed status to ${status}`);
     saveStore(store);
     res.json({ project: sanitizePublicProject(project) });
+  });
+
+  app.post('/api/admin/projects/bulk', requireAdmin, (req, res) => {
+    const ids = Array.isArray(req.body?.ids) ? req.body.ids.map((x: unknown) => sanitizeId(String(x))) : [];
+    const action = req.body?.action;
+    if (ids.length === 0 || !['publish', 'unpublish', 'delete'].includes(String(action))) {
+      res.status(400).json({ error: 'Provide project IDs and a valid bulk action.' });
+      return;
+    }
+    const idSet = new Set(ids);
+    const now = new Date().toISOString();
+    let affected = 0;
+
+    if (action === 'delete') {
+      const remaining: StoredProject[] = [];
+      for (const p of store.projects) {
+        if (idSet.has(p.id)) {
+          affected += 1;
+          for (const ph of p.photos) safeUnlinkUploadUrl(ph.url);
+        } else {
+          remaining.push(p);
+        }
+      }
+      store.projects = remaining;
+    } else {
+      const nextStatus: ProjectStatus = action === 'publish' ? 'published' : 'unpublished';
+      for (const p of store.projects) {
+        if (idSet.has(p.id)) {
+          p.status = nextStatus;
+          p.updatedAt = now;
+          affected += 1;
+        }
+      }
+    }
+
+    recordAudit(ADMIN_USERNAME, `project.bulk_${action}`, `${affected} pages`, `Bulk ${action} applied`);
+    saveStore(store);
+    res.json({
+      affected,
+      updated: action === 'delete' ? 0 : affected,
+      deleted: action === 'delete' ? affected : 0,
+      action,
+    });
+  });
+
+  app.patch('/api/admin/projects/:id/extend', requireAdmin, (req, res) => {
+    const id = sanitizeId(req.params.id);
+    const project = store.projects.find((p) => p.id === id);
+    if (!project) {
+      res.status(404).json({ error: 'Project not found.' });
+      return;
+    }
+    const days = Math.max(1, Math.min(365, Math.round(Number(req.body?.days) || 30)));
+    const baseTime = Math.max(Date.now(), new Date(project.expiresAt || Date.now()).getTime());
+    project.expiresAt = new Date(baseTime + days * 86400000).toISOString();
+    project.updatedAt = new Date().toISOString();
+    recordAudit(ADMIN_USERNAME, 'project.extend', project.id, `Extended expiry by +${days} days`);
+    saveStore(store);
+    res.json({ project: sanitizePublicProject(project) });
+  });
+
+  app.post('/api/admin/projects/:id/revoke-token', requireAdmin, (req, res) => {
+    const id = sanitizeId(req.params.id);
+    const project = store.projects.find((p) => p.id === id);
+    if (!project) {
+      res.status(404).json({ error: 'Project not found.' });
+      return;
+    }
+    project.editTokenHash = sha256Hex(generateEditToken());
+    project.updatedAt = new Date().toISOString();
+    recordAudit(ADMIN_USERNAME, 'project.revoke_token', project.id, 'Revoked existing owner edit token');
+    saveStore(store);
+    res.json({ revoked: true, projectId: project.id });
   });
 
   app.delete('/api/admin/projects/:id', requireAdmin, (req, res) => {
@@ -1303,6 +1666,7 @@ async function startServer() {
         rep.resolvedAt = now;
       }
     }
+    recordAudit(ADMIN_USERNAME, 'project.delete', id, `Deleted "${removed.recipientName}"`);
     saveStore(store);
     res.json({ deleted: true, id });
   });
@@ -1391,7 +1755,18 @@ async function startServer() {
       return;
     }
     const id = sanitizeId(String(b.id || name.toLowerCase().replace(/\s+/g, '-'))) || `anim_${generateSecureId(5)}`;
-    const validEffects = new Set(['confetti', 'fireworks', 'embers', 'petals', 'starlight']);
+    const validEffects = new Set([
+      'confetti',
+      'fireworks',
+      'embers',
+      'petals',
+      'starlight',
+      'balloons',
+      'butterflies',
+      'hearts',
+      'ribbons',
+      'snowsparkle',
+    ]);
     const validIntensity = new Set(['gentle', 'balanced', 'festive']);
     const preset: AnimationPreset = {
       id,
@@ -1403,6 +1778,7 @@ async function startServer() {
       updatedAt: new Date().toISOString(),
     };
     store.animationPresets.push(preset);
+    recordAudit(ADMIN_USERNAME, 'animation.create', preset.id, `Added ${preset.name}`);
     saveStore(store);
     res.status(201).json({ animationPreset: preset });
   });
@@ -1415,7 +1791,18 @@ async function startServer() {
       return;
     }
     const b = (req.body || {}) as Record<string, unknown>;
-    const validEffects = new Set(['confetti', 'fireworks', 'embers', 'petals', 'starlight']);
+    const validEffects = new Set([
+      'confetti',
+      'fireworks',
+      'embers',
+      'petals',
+      'starlight',
+      'balloons',
+      'butterflies',
+      'hearts',
+      'ribbons',
+      'snowsparkle',
+    ]);
     const validIntensity = new Set(['gentle', 'balanced', 'festive']);
     if (b.name !== undefined) preset.name = clampString(b.name, 80, preset.name);
     if (validEffects.has(String(b.effectType))) preset.effectType = b.effectType as AnimationPreset['effectType'];
@@ -1423,6 +1810,7 @@ async function startServer() {
     if (b.description !== undefined) preset.description = clampString(b.description, 240);
     if (typeof b.active === 'boolean') preset.active = b.active;
     preset.updatedAt = new Date().toISOString();
+    recordAudit(ADMIN_USERNAME, 'animation.update', preset.id, `Updated ${preset.name}`);
     saveStore(store);
     res.json({ animationPreset: preset });
   });
@@ -1639,6 +2027,9 @@ async function startServer() {
     if (b.tagline !== undefined) store.settings.tagline = clampString(b.tagline, 180, store.settings.tagline);
     if (b.heroHeadline !== undefined) store.settings.heroHeadline = clampString(b.heroHeadline, 140, store.settings.heroHeadline);
     if (b.footerNote !== undefined) store.settings.footerNote = clampString(b.footerNote, 180, store.settings.footerNote);
+    if (typeof b.announcementEnabled === 'boolean') store.settings.announcementEnabled = b.announcementEnabled;
+    if (b.announcementText !== undefined) store.settings.announcementText = clampString(b.announcementText, 180);
+    if (typeof b.maintenanceMode === 'boolean') store.settings.maintenanceMode = b.maintenanceMode;
     if (typeof b.maxImageSizeMb === 'number' && b.maxImageSizeMb >= 1 && b.maxImageSizeMb <= 50) {
       store.settings.maxImageSizeMb = Math.round(b.maxImageSizeMb);
     }
@@ -1658,16 +2049,128 @@ async function startServer() {
       store.settings.allowPublicPublishing = b.allowPublicPublishing;
     }
     store.settings.updatedAt = new Date().toISOString();
+    recordAudit(ADMIN_USERNAME, 'settings.update', 'global', 'Updated branding, limits, or maintenance settings');
     saveStore(store);
     res.json({ settings: store.settings });
   });
 
-  // ── Admin Storage Usage & Cleanup Trigger ───────────────────────────────────
+  // ── Admin Storage Usage, Media Browser & Cleanup Trigger ────────────────────
+  app.get('/api/admin/media', requireAdmin, (_req, res) => {
+    const referenced = new Set<string>();
+    for (const p of store.projects) {
+      if (p.backgroundUrl?.startsWith('/uploads/')) referenced.add(p.backgroundUrl);
+      if (p.musicUrl?.startsWith('/uploads/')) referenced.add(p.musicUrl);
+      for (const ph of p.photos) {
+        if (ph.url?.startsWith('/uploads/')) referenced.add(ph.url);
+      }
+    }
+    for (const bg of store.backgrounds) {
+      if (bg.imageUrl?.startsWith('/uploads/')) referenced.add(bg.imageUrl);
+    }
+    for (const t of store.templates) {
+      if (t.previewImage?.startsWith('/uploads/')) referenced.add(t.previewImage);
+    }
+    for (const m of store.musicTracks) {
+      if (m.audioUrl?.startsWith('/uploads/')) referenced.add(m.audioUrl);
+    }
+
+    const files: MediaFileEntry[] = [];
+    for (const category of UPLOAD_SUBDIRS) {
+      const dir = path.join(UPLOADS_DIR, category);
+      if (!fs.existsSync(dir)) continue;
+      for (const filename of fs.readdirSync(dir)) {
+        const fp = path.join(dir, filename);
+        try {
+          const stat = fs.statSync(fp);
+          if (!stat.isFile()) continue;
+          const url = `/uploads/${category}/${filename}`;
+          files.push({
+            url,
+            filename,
+            category,
+            sizeBytes: stat.size,
+            modifiedAt: stat.mtime.toISOString(),
+            inUse: referenced.has(url),
+          });
+        } catch {
+          // ignore
+        }
+      }
+    }
+    files.sort((a, b) => b.modifiedAt.localeCompare(a.modifiedAt));
+    res.json({ files });
+  });
+
+  app.delete('/api/admin/media', requireAdmin, (req, res) => {
+    const url = typeof req.body?.url === 'string' ? req.body.url : '';
+    if (!url.startsWith('/uploads/')) {
+      res.status(400).json({ error: 'Invalid upload file path.' });
+      return;
+    }
+    const reclaimed = safeUnlinkUploadUrl(url);
+    recordAudit(ADMIN_USERNAME, 'media.delete', url, `Deleted uploaded file (${reclaimed} bytes)`);
+    saveStore(store);
+    res.json({ deleted: true, reclaimedBytes: reclaimed, storage: computeStorageSummary() });
+  });
+
   app.post('/api/admin/storage/cleanup', requireAdmin, (_req, res) => {
     const result = runExpirationAndStorageCleanup();
+    recordAudit(
+      ADMIN_USERNAME,
+      'storage.cleanup',
+      'uploads',
+      `Purged ${result.purgedProjects} expired projects, ${result.deletedOrphanFiles} orphan files`
+    );
+    saveStore(store);
     res.json({
       ...result,
       storage: computeStorageSummary(),
+    });
+  });
+
+  // ── Admin Audit Logs, Security Controls & JSON Backup Export ────────────────
+  app.get('/api/admin/audit-logs', requireAdmin, (_req, res) => {
+    res.json({ auditLogs: store.auditLogs || [] });
+  });
+
+  app.post('/api/admin/security/reset-rate-limits', requireAdmin, (_req, res) => {
+    const cleared = rateBuckets.size;
+    rateBuckets.clear();
+    recordAudit(ADMIN_USERNAME, 'security.reset_rate_limits', 'rate-limiter', `Cleared ${cleared} active IP buckets`);
+    saveStore(store);
+    res.json({ clearedBuckets: cleared });
+  });
+
+  app.post('/api/admin/security/change-password', requireAdmin, (req, res) => {
+    const currentPassword = typeof req.body?.currentPassword === 'string' ? req.body.currentPassword : '';
+    const newPassword = typeof req.body?.newPassword === 'string' ? req.body.newPassword : '';
+    if (!currentPassword || !verifyAdminCredentials(ADMIN_USERNAME, currentPassword)) {
+      res.status(401).json({ error: 'Current password is incorrect.' });
+      return;
+    }
+    if (newPassword.length < 6 || newPassword.length > 128) {
+      res.status(400).json({ error: 'New password must be between 6 and 128 characters.' });
+      return;
+    }
+    store.adminPasswordHashOverride = crypto.scryptSync(newPassword, PASSWORD_SALT, 64).toString('hex');
+    recordAudit(ADMIN_USERNAME, 'security.change_password', ADMIN_USERNAME, 'Updated administrator password hash');
+    saveStore(store);
+    res.json({ updated: true });
+  });
+
+  app.get('/api/admin/export', requireAdmin, (_req, res) => {
+    recordAudit(ADMIN_USERNAME, 'admin.export', 'backup', 'Exported sanitized platform backup JSON');
+    saveStore(store);
+    res.json({
+      exportedAt: new Date().toISOString(),
+      settings: store.settings,
+      templates: store.templates,
+      animationPresets: store.animationPresets,
+      musicTracks: store.musicTracks,
+      backgrounds: store.backgrounds,
+      projects: store.projects.map(sanitizePublicProject),
+      reports: store.reports,
+      auditLogs: store.auditLogs || [],
     });
   });
 

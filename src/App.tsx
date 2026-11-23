@@ -166,6 +166,11 @@ function AppContent() {
 
   return (
     <div className="min-h-screen bg-[#FAF9F7] text-zinc-900 flex flex-col">
+      {catalog.settings.announcementEnabled && catalog.settings.announcementText?.trim() && (
+        <div className="bg-zinc-900 text-stone-100 text-xs text-center px-4 py-2">
+          {catalog.settings.announcementText}
+        </div>
+      )}
       {/* Strict 3-Zone Top Bar Contract */}
       <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-sm border-b border-stone-200">
         <div className="max-w-7xl mx-auto px-6 lg:px-10 h-16 flex items-center justify-between gap-8">
@@ -240,14 +245,33 @@ function AppContent() {
           <LandingView catalog={catalog} onStartBuilding={handleStartBuilding} onNavigate={navigate} />
         )}
 
-        {route.kind === 'studio' && (
-          <BuilderStudio
-            catalog={catalog}
-            initialTemplateId={selectedTemplateId}
-            onNavigate={navigate}
-            onProjectDeleted={() => navigate('/')}
-          />
-        )}
+        {route.kind === 'studio' &&
+          (catalog.settings.maintenanceMode ? (
+            <div className="max-w-lg mx-auto my-24 bg-white border border-stone-200 rounded-xl p-8 text-center">
+              <p className="text-xs font-medium text-zinc-500 mb-2">Scheduled Maintenance</p>
+              <h1 className="font-display text-2xl font-semibold text-zinc-900 mb-2">
+                Builder Studio Temporarily Paused
+              </h1>
+              <p className="text-xs text-zinc-600 leading-relaxed mb-6">
+                New birthday page creation is briefly paused while we perform maintenance. Existing published birthday
+                links remain live and viewable.
+              </p>
+              <button
+                type="button"
+                onClick={() => navigate('/')}
+                className="px-4 py-2.5 rounded-lg bg-zinc-900 text-white text-xs font-semibold hover:bg-zinc-800 cursor-pointer"
+              >
+                Return Home
+              </button>
+            </div>
+          ) : (
+            <BuilderStudio
+              catalog={catalog}
+              initialTemplateId={selectedTemplateId}
+              onNavigate={navigate}
+              onProjectDeleted={() => navigate('/')}
+            />
+          ))}
 
         {route.kind === 'edit' && (
           <>

@@ -7,9 +7,9 @@ import {
   updateDoc,
   deleteDoc,
 } from 'firebase/firestore';
-import { getDownloadURL, ref as storageRef, uploadBytes } from 'firebase/storage';
-import { auth, db, handleFirestoreError, OperationType, storage } from '../firebase';
+import { auth, db, handleFirestoreError, OperationType } from '../firebase';
 import type {
+  AdminAuditLog,
   AdminOverview,
   AdminSessionInfo,
   AnimationPreset,
@@ -17,6 +17,7 @@ import type {
   BirthdayProject,
   BirthdayTemplate,
   ContentReport,
+  MediaFileEntry,
   MusicTrack,
   ProjectStatus,
   PublicCatalog,
@@ -130,27 +131,114 @@ export function fetchPublicCatalog(): Promise<PublicCatalog> {
   return requestJson<PublicCatalog>('/api/catalog');
 }
 
-export async function uploadPublicPhoto(
-  file: File,
-  projectHint = 'draft'
-): Promise<{ url: string; sizeBytes: number; storageSource: 'firebase' | 'server' }> {
-  // Primary server validation & storage (always validates MIME + admin-configured MB limit)
-  const form = new FormData();
-  form.append('file', file);
-  const serverResult = await requestJson<{ url: string; sizeBytes: number }>('/api/upload/photo', {
-    method: 'POST',
-    body: form,
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : '');
+    reader.onerror = () => reject(new Error('Could not read the selected image file.'));
+    reader.readAsDataURL(file);
   });
+}
 
-  // Also attempt Firebase Storage mirror if bucket rules allow public writes
+async function optimizeImageFile(file: File, maxSizeMb: number): Promise<{ file: File; optimized: boolean }> {
+  // Keep animated GIFs untouched so animation frames are preserved
+  if (file.type === 'image/gif' || file.name.toLowerCase().endsWith('.gif')) {
+    return { file, optimized: false };
+  }
+
+  const maxBytes = maxSizeMb * 1024 * 1024;
+  // Optimize if file exceeds 2.2 MB or exceeds the configured upload ceiling
+  if (file.size <= Math.min(2.2 * 1024 * 1024, maxBytes * 0.85)) {
+    return { file, optimized: false };
+  }
+
   try {
-    const safeName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
-    const objRef = storageRef(storage, `projects/${projectHint}/${safeName}`);
-    await uploadBytes(objRef, file, { contentType: file.type });
-    const fbUrl = await getDownloadURL(objRef);
-    return { url: fbUrl, sizeBytes: file.size, storageSource: 'firebase' };
+    const objectUrl = URL.createObjectURL(file);
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const el = new Image();
+      el.onload = () => resolve(el);
+      el.onerror = () => reject(new Error('Image decode failed'));
+      el.src = objectUrl;
+    });
+    URL.revokeObjectURL(objectUrl);
+
+    const maxDim = 1600;
+    const scale = Math.min(1, maxDim / Math.max(img.naturalWidth || 1, img.naturalHeight || 1));
+    const width = Math.max(1, Math.round((img.naturalWidth || 1) * scale));
+    const height = Math.max(1, Math.round((img.naturalHeight || 1) * scale));
+
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return { file, optimized: false };
+    ctx.drawImage(img, 0, 0, width, height);
+
+    let quality = 0.86;
+    let blob: Blob | null = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', quality));
+      if (blob && blob.size <= maxBytes) break;
+      quality -= 0.14;
+    }
+
+    if (!blob || blob.size >= file.size) {
+      return { file, optimized: false };
+    }
+
+    const baseName = file.name.replace(/\.[^.]+$/, '') || 'birthday-photo';
+    const optimizedFile = new File([blob], `${baseName}.jpg`, { type: 'image/jpeg' });
+    return { file: optimizedFile, optimized: true };
   } catch {
-    return { url: serverResult.url, sizeBytes: serverResult.sizeBytes, storageSource: 'server' };
+    return { file, optimized: false };
+  }
+}
+
+export async function uploadPublicPhoto(
+  rawFile: File,
+  maxSizeMb = 6
+): Promise<{ url: string; sizeBytes: number; storageSource: 'firebase' | 'server'; optimized?: boolean }> {
+  const { file, optimized } = await optimizeImageFile(rawFile, maxSizeMb);
+
+  if (file.size > maxSizeMb * 1024 * 1024) {
+    throw new Error(`"${rawFile.name}" is still larger than the ${maxSizeMb} MB limit even after optimization.`);
+  }
+
+  // Primary multipart upload to server (fast, reliable, validated)
+  try {
+    const form = new FormData();
+    form.append('file', file);
+    const serverResult = await requestJson<{ url: string; sizeBytes: number }>('/api/upload/photo', {
+      method: 'POST',
+      body: form,
+    });
+    return {
+      url: serverResult.url,
+      sizeBytes: serverResult.sizeBytes,
+      storageSource: 'server',
+      optimized,
+    };
+  } catch (multipartErr) {
+    // Fallback to JSON base64 upload in case a proxy strips multipart headers or filename metadata
+    try {
+      const dataUrl = await fileToDataUrl(file);
+      const fallbackResult = await requestJson<{ url: string; sizeBytes: number }>('/api/upload/photo-data', {
+        method: 'POST',
+        body: JSON.stringify({ dataUrl, filename: file.name }),
+      });
+      return {
+        url: fallbackResult.url,
+        sizeBytes: fallbackResult.sizeBytes,
+        storageSource: 'server',
+        optimized,
+      };
+    } catch (fallbackErr) {
+      throw fallbackErr instanceof Error
+        ? fallbackErr
+        : multipartErr instanceof Error
+          ? multipartErr
+          : new Error('Photo upload failed.');
+    }
   }
 }
 
@@ -561,3 +649,60 @@ export function adminRunStorageCleanup(): Promise<{
 }> {
   return requestJson('/api/admin/storage/cleanup', { method: 'POST' });
 }
+
+export function adminBulkProjects(
+  ids: string[],
+  action: 'publish' | 'unpublish' | 'delete'
+): Promise<{ updated: number; deleted: number }> {
+  return requestJson('/api/admin/projects/bulk', {
+    method: 'POST',
+    body: JSON.stringify({ ids, action }),
+  });
+}
+
+export function adminExtendProject(id: string, days: number): Promise<{ project: BirthdayProject }> {
+  return requestJson(`/api/admin/projects/${encodeURIComponent(id)}/extend`, {
+    method: 'PATCH',
+    body: JSON.stringify({ days }),
+  });
+}
+
+export function adminRevokeProjectToken(id: string): Promise<{ revoked: boolean; projectId: string }> {
+  return requestJson(`/api/admin/projects/${encodeURIComponent(id)}/revoke-token`, {
+    method: 'POST',
+  });
+}
+
+export function fetchAdminMedia(): Promise<{ files: MediaFileEntry[] }> {
+  return requestJson('/api/admin/media');
+}
+
+export function adminDeleteMedia(url: string): Promise<{ deleted: boolean; reclaimedBytes: number }> {
+  return requestJson('/api/admin/media', {
+    method: 'DELETE',
+    body: JSON.stringify({ url }),
+  });
+}
+
+export function fetchAdminAuditLogs(): Promise<{ auditLogs: AdminAuditLog[] }> {
+  return requestJson('/api/admin/audit-logs');
+}
+
+export function adminResetRateLimits(): Promise<{ clearedBuckets: number }> {
+  return requestJson('/api/admin/security/reset-rate-limits', { method: 'POST' });
+}
+
+export function adminChangePassword(
+  currentPassword: string,
+  newPassword: string
+): Promise<{ updated: boolean }> {
+  return requestJson('/api/admin/security/change-password', {
+    method: 'POST',
+    body: JSON.stringify({ currentPassword, newPassword }),
+  });
+}
+
+export function fetchAdminExportBackup(): Promise<Record<string, unknown>> {
+  return requestJson('/api/admin/export');
+}
+
