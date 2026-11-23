@@ -1,0 +1,321 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Safety Net: Default Deny Everything
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // ─── Core Primitives ────────────────────────────────────────────────────────
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 64 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        (request.auth.token.email == 'skalihossen9547@gmail.com' && request.auth.token.email_verified == true)
+      );
+    }
+
+    // ─── Validation Blueprints ──────────────────────────────────────────────────
+    function isValidOptionalString(data, key, maxLen) {
+      return !(key in data) || (data[key] is string && data[key].size() <= maxLen);
+    }
+
+    function isValidOptionalNumber(data, key, minVal, maxVal) {
+      return !(key in data) || (data[key] is number && data[key] >= minVal && data[key] <= maxVal);
+    }
+
+    function isValidProject(data) {
+      return data.keys().hasAll([
+          'id', 'recipientName', 'senderName', 'headline', 'message',
+          'templateId', 'animationPresetId', 'status', 'visitCount', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'id', 'recipientName', 'senderName', 'age', 'headline', 'message',
+          'templateId', 'backgroundId', 'backgroundUrl', 'musicId', 'musicUrl',
+          'animationPresetId', 'accentColor', 'fontStyle', 'status', 'visitCount',
+          'storageBytes', 'wishes', 'photos', 'createdAt', 'updatedAt', 'expiresAt'
+        ])
+        && isValidId(data.id)
+        && data.recipientName is string && data.recipientName.size() >= 1 && data.recipientName.size() <= 80
+        && data.senderName is string && data.senderName.size() >= 1 && data.senderName.size() <= 80
+        && isValidOptionalNumber(data, 'age', 0, 150)
+        && data.headline is string && data.headline.size() >= 1 && data.headline.size() <= 140
+        && data.message is string && data.message.size() >= 1 && data.message.size() <= 2000
+        && isValidId(data.templateId)
+        && isValidOptionalString(data, 'backgroundId', 64)
+        && isValidOptionalString(data, 'backgroundUrl', 500)
+        && isValidOptionalString(data, 'musicId', 64)
+        && isValidOptionalString(data, 'musicUrl', 500)
+        && isValidId(data.animationPresetId)
+        && isValidOptionalString(data, 'accentColor', 32)
+        && (!('fontStyle' in data) || (data.fontStyle is string && data.fontStyle in ['editorial', 'modern', 'classic']))
+        && data.status is string && data.status in ['draft', 'published', 'unpublished']
+        && data.visitCount is number && data.visitCount >= 0 && data.visitCount <= 100000000
+        && isValidOptionalNumber(data, 'storageBytes', 0, 500000000)
+        && (!('wishes' in data) || (data.wishes is list && data.wishes.size() <= 20 && (data.wishes.size() == 0 || data.wishes[0] is map)))
+        && (!('photos' in data) || (data.photos is list && data.photos.size() <= 12 && (data.photos.size() == 0 || data.photos[0] is map)))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp
+        && (!('expiresAt' in data) || data.expiresAt is timestamp);
+    }
+
+    function isValidTemplate(data) {
+      return data.keys().hasAll(['id', 'name', 'category', 'themeMode', 'accentColor', 'active', 'updatedAt'])
+        && data.keys().hasOnly([
+          'id', 'name', 'category', 'description', 'previewImage', 'themeMode',
+          'accentColor', 'fontStyle', 'defaultAnimationId', 'defaultMusicId', 'active', 'updatedAt'
+        ])
+        && isValidId(data.id)
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= 80
+        && data.category is string && data.category.size() >= 1 && data.category.size() <= 40
+        && isValidOptionalString(data, 'description', 300)
+        && isValidOptionalString(data, 'previewImage', 500)
+        && data.themeMode is string && data.themeMode in ['light', 'dark']
+        && data.accentColor is string && data.accentColor.size() >= 1 && data.accentColor.size() <= 32
+        && (!('fontStyle' in data) || (data.fontStyle is string && data.fontStyle in ['editorial', 'modern', 'classic']))
+        && isValidOptionalString(data, 'defaultAnimationId', 64)
+        && isValidOptionalString(data, 'defaultMusicId', 64)
+        && data.active is bool
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidAnimationPreset(data) {
+      return data.keys().hasAll(['id', 'name', 'effectType', 'intensity', 'active', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'name', 'effectType', 'intensity', 'description', 'active', 'updatedAt'])
+        && isValidId(data.id)
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= 80
+        && data.effectType is string && data.effectType in ['confetti', 'fireworks', 'embers', 'petals', 'starlight']
+        && data.intensity is string && data.intensity in ['gentle', 'balanced', 'festive']
+        && isValidOptionalString(data, 'description', 240)
+        && data.active is bool
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidMusicTrack(data) {
+      return data.keys().hasAll(['id', 'title', 'sourceType', 'active', 'updatedAt'])
+        && data.keys().hasOnly([
+          'id', 'title', 'artist', 'sourceType', 'synthPreset', 'audioUrl',
+          'durationLabel', 'sizeBytes', 'active', 'updatedAt'
+        ])
+        && isValidId(data.id)
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 80
+        && isValidOptionalString(data, 'artist', 80)
+        && data.sourceType is string && data.sourceType in ['synth', 'audio']
+        && isValidOptionalString(data, 'synthPreset', 40)
+        && isValidOptionalString(data, 'audioUrl', 500)
+        && isValidOptionalString(data, 'durationLabel', 20)
+        && isValidOptionalNumber(data, 'sizeBytes', 0, 100000000)
+        && data.active is bool
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidBackgroundAsset(data) {
+      return data.keys().hasAll(['id', 'name', 'imageUrl', 'active', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'name', 'category', 'imageUrl', 'sizeBytes', 'active', 'updatedAt'])
+        && isValidId(data.id)
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= 80
+        && isValidOptionalString(data, 'category', 40)
+        && data.imageUrl is string && data.imageUrl.size() >= 1 && data.imageUrl.size() <= 500
+        && isValidOptionalNumber(data, 'sizeBytes', 0, 100000000)
+        && data.active is bool
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidReport(data) {
+      return data.keys().hasAll(['id', 'projectId', 'reason', 'status', 'createdAt'])
+        && data.keys().hasOnly(['id', 'projectId', 'reason', 'details', 'status', 'createdAt'])
+        && isValidId(data.id)
+        && isValidId(data.projectId)
+        && data.reason is string && data.reason in ['spam', 'inappropriate', 'harassment', 'copyright', 'other']
+        && isValidOptionalString(data, 'details', 500)
+        && data.status is string && data.status in ['open', 'resolved', 'dismissed']
+        && data.createdAt is timestamp;
+    }
+
+    function isValidSettings(data) {
+      return data.keys().hasAll([
+          'siteName', 'maxImageSizeMb', 'maxPhotosPerProject',
+          'projectExpirationDays', 'allowPublicPublishing', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'siteName', 'tagline', 'maxImageSizeMb', 'maxAudioSizeMb',
+          'maxPhotosPerProject', 'projectExpirationDays', 'rateLimitPerHour',
+          'allowPublicPublishing', 'updatedAt'
+        ])
+        && data.siteName is string && data.siteName.size() >= 1 && data.siteName.size() <= 60
+        && isValidOptionalString(data, 'tagline', 180)
+        && data.maxImageSizeMb is number && data.maxImageSizeMb >= 1 && data.maxImageSizeMb <= 50
+        && isValidOptionalNumber(data, 'maxAudioSizeMb', 1, 50)
+        && data.maxPhotosPerProject is number && data.maxPhotosPerProject >= 1 && data.maxPhotosPerProject <= 12
+        && data.projectExpirationDays is number && data.projectExpirationDays >= 1 && data.projectExpirationDays <= 365
+        && isValidOptionalNumber(data, 'rateLimitPerHour', 1, 500)
+        && data.allowPublicPublishing is bool
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidAdminRecord(data) {
+      return data.keys().hasAll(['email', 'role', 'createdAt'])
+        && data.keys().hasOnly(['email', 'role', 'createdAt'])
+        && data.email is string && data.email.size() >= 3 && data.email.size() <= 120
+        && data.role is string && data.role == 'admin'
+        && data.createdAt is timestamp;
+    }
+
+    // ─── Collection Rules ───────────────────────────────────────────────────────
+
+    // Birthday Projects: No-login public creation & published page reads; Admin manages/lists all
+    match /projects/{projectId} {
+      allow get: if isValidId(projectId) && (existing().status == 'published' || isAdmin());
+      allow list: if isAdmin();
+      allow create: if isValidId(projectId)
+        && isValidProject(incoming())
+        && incoming().id == projectId
+        && incoming().visitCount == 0
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(projectId)
+        && isValidProject(incoming())
+        && incoming().id == existing().id
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          (
+            isAdmin()
+            && incoming().diff(existing()).affectedKeys().hasOnly([
+              'recipientName', 'senderName', 'age', 'headline', 'message',
+              'templateId', 'backgroundId', 'backgroundUrl', 'musicId', 'musicUrl',
+              'animationPresetId', 'accentColor', 'fontStyle', 'status', 'visitCount',
+              'storageBytes', 'wishes', 'photos', 'updatedAt', 'expiresAt'
+            ])
+          ) ||
+          (
+            existing().status == 'published'
+            && incoming().status == 'published'
+            && incoming().visitCount == existing().visitCount + 1
+            && incoming().diff(existing()).affectedKeys().hasOnly(['visitCount', 'updatedAt'])
+          )
+        );
+      allow delete: if isValidId(projectId) && isAdmin();
+    }
+
+    // Admin-Managed Templates
+    match /templates/{templateId} {
+      allow get: if isValidId(templateId) && (existing().active == true || isAdmin());
+      allow list: if existing().active == true || isAdmin();
+      allow create: if isAdmin() && isValidId(templateId) && isValidTemplate(incoming())
+        && incoming().id == templateId && incoming().updatedAt == request.time;
+      allow update: if isAdmin() && isValidId(templateId) && isValidTemplate(incoming())
+        && incoming().id == existing().id && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'name', 'category', 'description', 'previewImage', 'themeMode',
+          'accentColor', 'fontStyle', 'defaultAnimationId', 'defaultMusicId', 'active', 'updatedAt'
+        ]);
+      allow delete: if isAdmin() && isValidId(templateId);
+    }
+
+    // Admin-Managed Animation Presets
+    match /animationPresets/{presetId} {
+      allow get: if isValidId(presetId) && (existing().active == true || isAdmin());
+      allow list: if existing().active == true || isAdmin();
+      allow create: if isAdmin() && isValidId(presetId) && isValidAnimationPreset(incoming())
+        && incoming().id == presetId && incoming().updatedAt == request.time;
+      allow update: if isAdmin() && isValidId(presetId) && isValidAnimationPreset(incoming())
+        && incoming().id == existing().id && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'name', 'effectType', 'intensity', 'description', 'active', 'updatedAt'
+        ]);
+      allow delete: if isAdmin() && isValidId(presetId);
+    }
+
+    // Admin-Managed Music Tracks
+    match /musicTracks/{trackId} {
+      allow get: if isValidId(trackId) && (existing().active == true || isAdmin());
+      allow list: if existing().active == true || isAdmin();
+      allow create: if isAdmin() && isValidId(trackId) && isValidMusicTrack(incoming())
+        && incoming().id == trackId && incoming().updatedAt == request.time;
+      allow update: if isAdmin() && isValidId(trackId) && isValidMusicTrack(incoming())
+        && incoming().id == existing().id && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'title', 'artist', 'sourceType', 'synthPreset', 'audioUrl',
+          'durationLabel', 'sizeBytes', 'active', 'updatedAt'
+        ]);
+      allow delete: if isAdmin() && isValidId(trackId);
+    }
+
+    // Admin-Managed Backgrounds
+    match /backgrounds/{backgroundId} {
+      allow get: if isValidId(backgroundId) && (existing().active == true || isAdmin());
+      allow list: if existing().active == true || isAdmin();
+      allow create: if isAdmin() && isValidId(backgroundId) && isValidBackgroundAsset(incoming())
+        && incoming().id == backgroundId && incoming().updatedAt == request.time;
+      allow update: if isAdmin() && isValidId(backgroundId) && isValidBackgroundAsset(incoming())
+        && incoming().id == existing().id && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'name', 'category', 'imageUrl', 'sizeBytes', 'active', 'updatedAt'
+        ]);
+      allow delete: if isAdmin() && isValidId(backgroundId);
+    }
+
+    // Public Content Reports (Create-Only for public visitors; Admin-Only review & resolution)
+    match /reports/{reportId} {
+      allow get: if isValidId(reportId) && isAdmin();
+      allow list: if isAdmin();
+      allow create: if isValidId(reportId)
+        && isValidReport(incoming())
+        && incoming().id == reportId
+        && incoming().status == 'open'
+        && incoming().createdAt == request.time
+        && exists(/databases/$(database)/documents/projects/$(incoming().projectId));
+      allow update: if isAdmin()
+        && isValidId(reportId)
+        && isValidReport(incoming())
+        && incoming().id == existing().id
+        && incoming().projectId == existing().projectId
+        && incoming().createdAt == existing().createdAt
+        && existing().status == 'open'
+        && incoming().diff(existing()).affectedKeys().hasOnly(['status']);
+      allow delete: if isAdmin() && isValidId(reportId);
+    }
+
+    // Global Site Settings (Public Get for global config; Admin-Only Writes)
+    match /settings/{settingId} {
+      allow get: if isValidId(settingId) && (settingId == 'global' || isAdmin());
+      allow list: if isAdmin();
+      allow create: if isAdmin() && isValidId(settingId) && isValidSettings(incoming())
+        && incoming().updatedAt == request.time;
+      allow update: if isAdmin() && isValidId(settingId) && isValidSettings(incoming())
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'siteName', 'tagline', 'maxImageSizeMb', 'maxAudioSizeMb',
+          'maxPhotosPerProject', 'projectExpirationDays', 'rateLimitPerHour',
+          'allowPublicPublishing', 'updatedAt'
+        ]);
+      allow delete: if false;
+    }
+
+    // Admin Registry (Strictly Admin-Only)
+    match /admins/{uid} {
+      allow get: if isValidId(uid) && isAdmin();
+      allow list: if isAdmin();
+      allow create: if isAdmin() && isValidId(uid) && isValidAdminRecord(incoming())
+        && incoming().createdAt == request.time;
+      allow update: if false;
+      allow delete: if isAdmin() && isValidId(uid) && uid != request.auth.uid;
+    }
+  }
+}

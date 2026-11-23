@@ -1,0 +1,445 @@
+{
+  "entities": {
+    "BirthdayProject": {
+      "title": "BirthdayProject",
+      "description": "A public or draft birthday celebration website created without user login.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 4,
+          "maxLength": 64,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "recipientName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "senderName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "age": {
+          "type": "number"
+        },
+        "headline": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 140
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "templateId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "backgroundId": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "backgroundUrl": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "musicId": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "musicUrl": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "animationPresetId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "accentColor": {
+          "type": "string",
+          "maxLength": 32
+        },
+        "fontStyle": {
+          "type": "string",
+          "enum": ["editorial", "modern", "classic"]
+        },
+        "status": {
+          "type": "string",
+          "enum": ["draft", "published", "unpublished"]
+        },
+        "visitCount": {
+          "type": "number"
+        },
+        "storageBytes": {
+          "type": "number"
+        },
+        "wishes": {
+          "type": "array"
+        },
+        "photos": {
+          "type": "array"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "expiresAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "recipientName",
+        "senderName",
+        "headline",
+        "message",
+        "templateId",
+        "animationPresetId",
+        "status",
+        "visitCount",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "BirthdayTemplate": {
+      "title": "BirthdayTemplate",
+      "description": "Admin-managed visual template for birthday websites.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "category": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 300
+        },
+        "previewImage": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "themeMode": {
+          "type": "string",
+          "enum": ["light", "dark"]
+        },
+        "accentColor": {
+          "type": "string",
+          "maxLength": 32
+        },
+        "fontStyle": {
+          "type": "string",
+          "enum": ["editorial", "modern", "classic"]
+        },
+        "defaultAnimationId": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "defaultMusicId": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "active": {
+          "type": "boolean"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "category",
+        "themeMode",
+        "accentColor",
+        "active",
+        "updatedAt"
+      ]
+    },
+    "AnimationPreset": {
+      "title": "AnimationPreset",
+      "description": "Admin-managed animation preset controlling celebration particle physics and effects.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "effectType": {
+          "type": "string",
+          "enum": ["confetti", "fireworks", "embers", "petals", "starlight"]
+        },
+        "intensity": {
+          "type": "string",
+          "enum": ["gentle", "balanced", "festive"]
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 240
+        },
+        "active": {
+          "type": "boolean"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "name", "effectType", "intensity", "active", "updatedAt"]
+    },
+    "MusicTrack": {
+      "title": "MusicTrack",
+      "description": "Background music track (built-in Web Audio synth or admin-uploaded audio).",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "artist": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "sourceType": {
+          "type": "string",
+          "enum": ["synth", "audio"]
+        },
+        "synthPreset": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "audioUrl": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "durationLabel": {
+          "type": "string",
+          "maxLength": 20
+        },
+        "sizeBytes": {
+          "type": "number"
+        },
+        "active": {
+          "type": "boolean"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "title", "sourceType", "active", "updatedAt"]
+    },
+    "BackgroundAsset": {
+      "title": "BackgroundAsset",
+      "description": "Admin-managed celebration backdrop image.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "category": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "imageUrl": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "sizeBytes": {
+          "type": "number"
+        },
+        "active": {
+          "type": "boolean"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "name", "imageUrl", "active", "updatedAt"]
+    },
+    "ContentReport": {
+      "title": "ContentReport",
+      "description": "Public report flagging inappropriate birthday page content for admin moderation.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 4,
+          "maxLength": 64,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "projectId": {
+          "type": "string",
+          "minLength": 4,
+          "maxLength": 64,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "reason": {
+          "type": "string",
+          "enum": ["spam", "inappropriate", "harassment", "copyright", "other"]
+        },
+        "details": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "status": {
+          "type": "string",
+          "enum": ["open", "resolved", "dismissed"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "projectId", "reason", "status", "createdAt"]
+    },
+    "SiteSettings": {
+      "title": "SiteSettings",
+      "description": "Global platform configuration managed exclusively by administrators.",
+      "type": "object",
+      "properties": {
+        "siteName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "tagline": {
+          "type": "string",
+          "maxLength": 180
+        },
+        "maxImageSizeMb": {
+          "type": "number"
+        },
+        "maxAudioSizeMb": {
+          "type": "number"
+        },
+        "maxPhotosPerProject": {
+          "type": "number"
+        },
+        "projectExpirationDays": {
+          "type": "number"
+        },
+        "rateLimitPerHour": {
+          "type": "number"
+        },
+        "allowPublicPublishing": {
+          "type": "boolean"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "siteName",
+        "maxImageSizeMb",
+        "maxPhotosPerProject",
+        "projectExpirationDays",
+        "allowPublicPublishing",
+        "updatedAt"
+      ]
+    },
+    "AdminRecord": {
+      "title": "AdminRecord",
+      "description": "Trusted administrator UID allowlist.",
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "role": {
+          "type": "string",
+          "enum": ["admin"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["email", "role", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/projects/{projectId}": {
+      "schema": { "$ref": "#/entities/BirthdayProject" },
+      "description": "Publicly created birthday pages; public visitors may only read published pages."
+    },
+    "/templates/{templateId}": {
+      "schema": { "$ref": "#/entities/BirthdayTemplate" },
+      "description": "Admin-managed birthday templates."
+    },
+    "/animationPresets/{presetId}": {
+      "schema": { "$ref": "#/entities/AnimationPreset" },
+      "description": "Admin-managed animation presets."
+    },
+    "/musicTracks/{trackId}": {
+      "schema": { "$ref": "#/entities/MusicTrack" },
+      "description": "Admin-managed background music library."
+    },
+    "/backgrounds/{backgroundId}": {
+      "schema": { "$ref": "#/entities/BackgroundAsset" },
+      "description": "Admin-managed background library."
+    },
+    "/reports/{reportId}": {
+      "schema": { "$ref": "#/entities/ContentReport" },
+      "description": "Public content abuse reports reviewed by administrators."
+    },
+    "/settings/{settingId}": {
+      "schema": { "$ref": "#/entities/SiteSettings" },
+      "description": "Global branding, upload limit, and expiration configuration."
+    },
+    "/admins/{uid}": {
+      "schema": { "$ref": "#/entities/AdminRecord" },
+      "description": "Administrator role lookup documents."
+    }
+  }
+}

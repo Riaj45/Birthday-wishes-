@@ -1,0 +1,352 @@
+{
+  "projects": [
+    {
+      "id": "showcase-clara-30",
+      "recipientName": "Clara Vance",
+      "senderName": "Elena & Friends",
+      "age": 30,
+      "headline": "Thirty Years of Light & Laughter",
+      "message": "From late-night studio talks to Sunday morning bakeries, you bring warmth to every table you join. Make a wish, blow out the candles, and know how deeply you are celebrated today.",
+      "eventDate": "November 24",
+      "templateId": "golden-candlelight",
+      "backgroundId": "bg-golden-candlelight",
+      "backgroundUrl": "/src/assets/images/template_golden_candlelight_1795407298151.jpg",
+      "musicId": "candlelight-music-box",
+      "musicUrl": "",
+      "animationPresetId": "amber-embers",
+      "accentColor": "#D97706",
+      "fontStyle": "editorial",
+      "showCake": true,
+      "showEnvelopeIntro": true,
+      "status": "published",
+      "visitCount": 48,
+      "storageBytes": 0,
+      "wishes": [
+        {
+          "id": "w-1",
+          "author": "Marcus",
+          "relationship": "Brother",
+          "text": "Here is to your best decade yet—may your studio always smell like fresh espresso and cedar."
+        },
+        {
+          "id": "w-2",
+          "author": "Sora",
+          "relationship": "College Roommate",
+          "text": "Thank you for a decade of kindness, terrible road-trip playlists, and unforgettable dinners."
+        },
+        {
+          "id": "w-3",
+          "author": "Nadia",
+          "relationship": "Design Partner",
+          "text": "Wishing you slow mornings, bold creative chapters, and endless joy at thirty."
+        }
+      ],
+      "photos": [
+        {
+          "id": "p-1",
+          "url": "/src/assets/images/hero_birthday_editorial_1795407298468.jpg",
+          "caption": "Dinner table ready for tonight"
+        },
+        {
+          "id": "p-2",
+          "url": "/src/assets/images/template_polaroid_sunburst_1795407300813.jpg",
+          "caption": "Sunday afternoon tea & cake"
+        }
+      ],
+      "createdAt": "2026-11-20T05:42:55.664Z",
+      "updatedAt": "2026-11-23T05:42:55.663Z",
+      "expiresAt": "2027-02-18T05:42:55.664Z",
+      "editTokenHash": "55dd2e8e168a029f64d5c9498d1adf8bbef35b8b02862d9775010093bbf50714"
+    },
+    {
+      "id": "showcase-devon-25",
+      "recipientName": "Devon Park",
+      "senderName": "The Greenhouse Crew",
+      "age": 25,
+      "headline": "Happy 25th Birthday, Devon",
+      "message": "A quarter-century of curiosity, generosity, and turning every ordinary weekend into an adventure. Scroll through your notes and blow out every candle for good luck.",
+      "eventDate": "December 2",
+      "templateId": "botanical-conservatory",
+      "backgroundId": "bg-botanical-garden",
+      "backgroundUrl": "/src/assets/images/template_botanical_garden_1795407301854.jpg",
+      "musicId": "golden-hour-waltz",
+      "musicUrl": "",
+      "animationPresetId": "botanical-petals",
+      "accentColor": "#15803D",
+      "fontStyle": "editorial",
+      "showCake": true,
+      "showEnvelopeIntro": true,
+      "status": "published",
+      "visitCount": 31,
+      "storageBytes": 0,
+      "wishes": [
+        {
+          "id": "w-4",
+          "author": "Hannah",
+          "relationship": "Sister",
+          "text": "So proud of everything you built this year. Save me the corner slice with extra frosting!"
+        },
+        {
+          "id": "w-5",
+          "author": "Liam",
+          "relationship": "Best Friend",
+          "text": "Twenty-five looks brilliant on you. Let us plan the Kyoto trip next spring."
+        }
+      ],
+      "photos": [
+        {
+          "id": "p-3",
+          "url": "/src/assets/images/template_botanical_garden_1795407301854.jpg",
+          "caption": "Conservatory brunch memories"
+        }
+      ],
+      "createdAt": "2026-11-21T05:42:55.664Z",
+      "updatedAt": "2026-11-23T05:42:55.663Z",
+      "expiresAt": "2027-02-19T05:42:55.665Z",
+      "editTokenHash": "84c1ace18a9364e8e9055129f6a4ae3552cbd621e2a3f54134c0c9d251305f9b"
+    }
+  ],
+  "templates": [
+    {
+      "id": "golden-candlelight",
+      "name": "Golden Candlelight",
+      "category": "Evening",
+      "description": "Warm amber bokeh, fine ivory linen framing, and intimate candlelit serif typography.",
+      "previewImage": "/src/assets/images/template_golden_candlelight_1795407298151.jpg",
+      "themeMode": "dark",
+      "accentColor": "#D97706",
+      "fontStyle": "editorial",
+      "defaultAnimationId": "amber-embers",
+      "defaultMusicId": "candlelight-music-box",
+      "active": true,
+      "updatedAt": "2026-11-23T05:42:55.663Z"
+    },
+    {
+      "id": "botanical-conservatory",
+      "name": "Botanical Conservatory",
+      "category": "Editorial",
+      "description": "Sunlit eucalyptus, deckle-edge cotton stationery cards, and airy daylight composition.",
+      "previewImage": "/src/assets/images/template_botanical_garden_1795407301854.jpg",
+      "themeMode": "light",
+      "accentColor": "#15803D",
+      "fontStyle": "editorial",
+      "defaultAnimationId": "botanical-petals",
+      "defaultMusicId": "golden-hour-waltz",
+      "active": true,
+      "updatedAt": "2026-11-23T05:42:55.663Z"
+    },
+    {
+      "id": "midnight-velvet",
+      "name": "Midnight Velvet",
+      "category": "Milestone",
+      "description": "Deep slate drapery, champagne gold fireworks, and refined black-tie milestone styling.",
+      "previewImage": "/src/assets/images/template_midnight_velvet_1795407298778.jpg",
+      "themeMode": "dark",
+      "accentColor": "#E11D48",
+      "fontStyle": "classic",
+      "defaultAnimationId": "midnight-fireworks",
+      "defaultMusicId": "midnight-piano-lullaby",
+      "active": true,
+      "updatedAt": "2026-11-23T05:42:55.663Z"
+    },
+    {
+      "id": "sunburst-polaroid",
+      "name": "Sunburst Keepsake",
+      "category": "Nostalgic",
+      "description": "Warm afternoon film tones with tactile photo prints and cheerful confetti celebration.",
+      "previewImage": "/src/assets/images/template_polaroid_sunburst_1795407300813.jpg",
+      "themeMode": "light",
+      "accentColor": "#E11D48",
+      "fontStyle": "modern",
+      "defaultAnimationId": "golden-confetti",
+      "defaultMusicId": "happy-birthday-chimes",
+      "active": true,
+      "updatedAt": "2026-11-23T05:42:55.663Z"
+    }
+  ],
+  "animationPresets": [
+    {
+      "id": "golden-confetti",
+      "name": "Golden Confetti Shower",
+      "effectType": "confetti",
+      "intensity": "balanced",
+      "description": "Warm rose, champagne gold, and ivory confetti bursts on reveal and candle blow-out.",
+      "active": true,
+      "updatedAt": "2026-11-23T05:42:55.663Z"
+    },
+    {
+      "id": "midnight-fireworks",
+      "name": "Midnight Fireworks",
+      "effectType": "fireworks",
+      "intensity": "festive",
+      "description": "Celebratory high-altitude firework volleys across the celebration sky.",
+      "active": true,
+      "updatedAt": "2026-11-23T05:42:55.663Z"
+    },
+    {
+      "id": "amber-embers",
+      "name": "Candlelight Embers",
+      "effectType": "embers",
+      "intensity": "gentle",
+      "description": "Soft glowing golden light motes drifting upward like warm candlelight.",
+      "active": true,
+      "updatedAt": "2026-11-23T05:42:55.663Z"
+    },
+    {
+      "id": "botanical-petals",
+      "name": "Botanical Petal Drift",
+      "effectType": "petals",
+      "intensity": "gentle",
+      "description": "Delicate fluttering blossom petals floating gently down the invitation.",
+      "active": true,
+      "updatedAt": "2026-11-23T05:42:55.663Z"
+    },
+    {
+      "id": "starlight-shimmer",
+      "name": "Starlight Constellation",
+      "effectType": "starlight",
+      "intensity": "balanced",
+      "description": "Subtle twinkling starlight sparkles shimmering behind the greeting.",
+      "active": true,
+      "updatedAt": "2026-11-23T05:42:55.663Z"
+    }
+  ],
+  "musicTracks": [
+    {
+      "id": "happy-birthday-chimes",
+      "title": "Happy Birthday Chimes",
+      "artist": "Birthday Magic Studio",
+      "sourceType": "synth",
+      "synthPreset": "happy-birthday",
+      "durationLabel": "Loop · Warm Chimes",
+      "sizeBytes": 0,
+      "active": true,
+      "updatedAt": "2026-11-23T05:42:55.663Z"
+    },
+    {
+      "id": "candlelight-music-box",
+      "title": "Candlelight Music Box",
+      "artist": "Birthday Magic Studio",
+      "sourceType": "synth",
+      "synthPreset": "music-box",
+      "durationLabel": "Loop · Celesta",
+      "sizeBytes": 0,
+      "active": true,
+      "updatedAt": "2026-11-23T05:42:55.663Z"
+    },
+    {
+      "id": "golden-hour-waltz",
+      "title": "Golden Hour Waltz",
+      "artist": "Birthday Magic Studio",
+      "sourceType": "synth",
+      "synthPreset": "waltz",
+      "durationLabel": "Loop · Acoustic Harp",
+      "sizeBytes": 0,
+      "active": true,
+      "updatedAt": "2026-11-23T05:42:55.663Z"
+    },
+    {
+      "id": "midnight-piano-lullaby",
+      "title": "Midnight Piano Lullaby",
+      "artist": "Birthday Magic Studio",
+      "sourceType": "synth",
+      "synthPreset": "piano-lullaby",
+      "durationLabel": "Loop · Soft Rhodes",
+      "sizeBytes": 0,
+      "active": true,
+      "updatedAt": "2026-11-23T05:42:55.663Z"
+    }
+  ],
+  "backgrounds": [
+    {
+      "id": "bg-golden-candlelight",
+      "name": "Golden Candlelight Table",
+      "category": "Evening",
+      "imageUrl": "/src/assets/images/template_golden_candlelight_1795407298151.jpg",
+      "sizeBytes": 0,
+      "active": true,
+      "updatedAt": "2026-11-23T05:42:55.663Z"
+    },
+    {
+      "id": "bg-botanical-garden",
+      "name": "Sunlit Conservatory",
+      "category": "Botanical",
+      "imageUrl": "/src/assets/images/template_botanical_garden_1795407301854.jpg",
+      "sizeBytes": 0,
+      "active": true,
+      "updatedAt": "2026-11-23T05:42:55.663Z"
+    },
+    {
+      "id": "bg-midnight-velvet",
+      "name": "Midnight Velvet Drape",
+      "category": "Milestone",
+      "imageUrl": "/src/assets/images/template_midnight_velvet_1795407298778.jpg",
+      "sizeBytes": 0,
+      "active": true,
+      "updatedAt": "2026-11-23T05:42:55.663Z"
+    },
+    {
+      "id": "bg-sunburst-linen",
+      "name": "Afternoon Chamomile Linen",
+      "category": "Nostalgic",
+      "imageUrl": "/src/assets/images/template_polaroid_sunburst_1795407300813.jpg",
+      "sizeBytes": 0,
+      "active": true,
+      "updatedAt": "2026-11-23T05:42:55.663Z"
+    },
+    {
+      "id": "bg-editorial-cake",
+      "name": "Beeswax Candles & Roses",
+      "category": "Editorial",
+      "imageUrl": "/src/assets/images/hero_birthday_editorial_1795407298468.jpg",
+      "sizeBytes": 0,
+      "active": true,
+      "updatedAt": "2026-11-23T05:42:55.663Z"
+    }
+  ],
+  "reports": [],
+  "settings": {
+    "siteName": "Birthday Magic",
+    "tagline": "Bespoke birthday pages built in minutes—no account, no login, just a shareable link.",
+    "heroHeadline": "Craft a memorable birthday website without creating an account.",
+    "footerNote": "Birthday Magic · Public no-login birthday studio with private edit-key protection.",
+    "maxImageSizeMb": 5,
+    "maxAudioSizeMb": 12,
+    "maxPhotosPerProject": 8,
+    "projectExpirationDays": 90,
+    "rateLimitPerHour": 30,
+    "allowPublicPublishing": true,
+    "updatedAt": "2026-11-23T05:42:55.663Z"
+  },
+  "dailyStats": {
+    "2026-11-17": {
+      "projectsCreated": 1,
+      "visits": 9
+    },
+    "2026-11-18": {
+      "projectsCreated": 2,
+      "visits": 14
+    },
+    "2026-11-19": {
+      "projectsCreated": 1,
+      "visits": 11
+    },
+    "2026-11-20": {
+      "projectsCreated": 2,
+      "visits": 19
+    },
+    "2026-11-21": {
+      "projectsCreated": 3,
+      "visits": 24
+    },
+    "2026-11-22": {
+      "projectsCreated": 2,
+      "visits": 18
+    },
+    "2026-11-23": {
+      "projectsCreated": 1,
+      "visits": 12
+    }
+  },
+  "adminSessions": {}
+}

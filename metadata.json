@@ -1,0 +1,8 @@
+{
+  "name": "Birthday Magic",
+  "description": "No-login public birthday website builder with live animation studio, shareable celebration links, private edit-token management, and protected admin console.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

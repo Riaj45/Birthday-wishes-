@@ -1,0 +1,139 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Fraunces", Georgia, serif;
+  --font-sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+@layer base {
+  body {
+    font-family: var(--font-sans);
+    background-color: #faf9f7;
+    color: #18181b;
+  }
+
+  h1,
+  h2,
+  h3,
+  .font-display {
+    font-family: var(--font-display);
+  }
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+.text-balance {
+  text-wrap: balance;
+}
+
+/* Celebration Keyframes (compositor-only: transform & opacity) */
+@keyframes candleFlicker {
+  0%,
+  100% {
+    transform: scaleY(1) scaleX(1) rotate(-1deg);
+    opacity: 0.96;
+  }
+  25% {
+    transform: scaleY(1.08) scaleX(0.94) rotate(1.5deg);
+    opacity: 1;
+  }
+  50% {
+    transform: scaleY(0.95) scaleX(1.04) rotate(-2deg);
+    opacity: 0.9;
+  }
+  75% {
+    transform: scaleY(1.05) scaleX(0.97) rotate(1deg);
+    opacity: 0.98;
+  }
+}
+
+@keyframes smokeRise {
+  0% {
+    transform: translateY(0) scale(0.8);
+    opacity: 0.7;
+  }
+  100% {
+    transform: translateY(-28px) scale(1.6);
+    opacity: 0;
+  }
+}
+
+@keyframes floatUp {
+  0% {
+    transform: translateY(105%) translateX(0) rotate(0deg);
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.85;
+  }
+  85% {
+    opacity: 0.7;
+  }
+  100% {
+    transform: translateY(-15%) translateX(24px) rotate(180deg);
+    opacity: 0;
+  }
+}
+
+@keyframes driftDown {
+  0% {
+    transform: translateY(-10%) translateX(0) rotate(0deg);
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.85;
+  }
+  85% {
+    opacity: 0.75;
+  }
+  100% {
+    transform: translateY(110%) translateX(-28px) rotate(260deg);
+    opacity: 0;
+  }
+}
+
+@keyframes twinkleStar {
+  0%,
+  100% {
+    transform: scale(0.75);
+    opacity: 0.25;
+  }
+  50% {
+    transform: scale(1.25);
+    opacity: 0.95;
+  }
+}
+
+.animate-candle-flicker {
+  animation: candleFlicker 1.9s ease-in-out infinite;
+  transform-origin: bottom center;
+}
+
+.animate-smoke-rise {
+  animation: smokeRise 1.6s ease-out forwards;
+}
+
+.animate-float-up {
+  animation: floatUp linear infinite;
+}
+
+.animate-drift-down {
+  animation: driftDown linear infinite;
+}
+
+.animate-twinkle {
+  animation: twinkleStar ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-candle-flicker,
+  .animate-smoke-rise,
+  .animate-float-up,
+  .animate-drift-down,
+  .animate-twinkle {
+    animation: none;
+  }
+}
